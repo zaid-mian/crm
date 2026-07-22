@@ -37,16 +37,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadUsers() {
         try {
-            // Attempt to populate user dropdowns
+            // NOTE: Temporary hardcoded list for the development test client.
+            // This will be replaced with a backend API request once the User module is implemented.
+            const users = [
+                { id: 1, name: "Admin" },
+                { id: 2, name: "Manager" },
+                { id: 3, name: "Salesperson 1" },
+                { id: 4, name: "Salesperson 2" }
+            ];
+
             const addSelect = document.getElementById('addSalespersonSelect');
             const editSelect = document.getElementById('editSalespersonSelect');
             const filterSelect = document.getElementById('filterSalesperson');
 
-            // Default option if users API is not available
-            const defaultOption = `<option value="1">Admin User</option>`;
-            addSelect.innerHTML = defaultOption;
-            editSelect.innerHTML = defaultOption;
-            filterSelect.innerHTML = `<option value="">All Salespersons</option><option value="1">Admin User</option>`;
+            const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            addSelect.innerHTML = '<option value="">Select User</option>' + options;
+            editSelect.innerHTML = '<option value="">Select User</option>' + options;
+            filterSelect.innerHTML = '<option value="">All Salespersons</option>' + options;
         } catch (err) {
             console.error(err);
         }
