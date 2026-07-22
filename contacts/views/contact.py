@@ -1,6 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets, status, filters
-from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
@@ -8,7 +7,7 @@ from contacts.models import Contact
 from contacts.services import ContactQueryService
 from contacts.filters import ContactFilter, ContactSearchFilter
 from contacts.permissions import IsContactOwnerOrManager
-from contacts.utils.responses import api_success, api_error
+from contacts.utils.responses import api_success
 from contacts.serializers import (
     ContactListSerializer,
     ContactDetailSerializer,
