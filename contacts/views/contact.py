@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
-from contacts.models import Contact, Opportunity, Task
+from contacts.models import Contact
 from contacts.services import ContactQueryService
 from contacts.filters import ContactFilter, ContactSearchFilter
 from contacts.permissions import IsContactOwnerOrManager
@@ -14,8 +14,6 @@ from contacts.serializers import (
     ContactDetailSerializer,
     ContactCreateSerializer,
     ContactUpdateSerializer,
-    OpportunitySerializer,
-    TaskSerializer,
 )
 
 class ContactPagination(PageNumberPagination):
@@ -130,37 +128,4 @@ class ContactViewSet(
             data=None,
             message="Contact deleted successfully.",
             status_code=status.HTTP_200_OK
-        )
-
-    @action(detail=True, methods=['post'], url_path='opportunities')
-    def create_opportunity(self, request, pk=None):
-        contact = self.get_object()
-        name = request.data.get('name')
-        stage = request.data.get('stage', 'Negotiation')
-        value = request.data.get('value', '$15,000')
-
-        if not name:
-            return api_error("Opportunity name is required.")
-
-        opp = Opportunity.objects.create(contact=contact, name=name, stage=stage, value=value)
-        return api_success(
-            data=OpportunitySerializer(opp).data,
-            message="Opportunity created successfully.",
-            status_code=status.HTTP_201_CREATED
-        )
-
-    @action(detail=True, methods=['post'], url_path='tasks')
-    def create_task(self, request, pk=None):
-        contact = self.get_object()
-        name = request.data.get('name')
-        status_val = request.data.get('status', 'Pending')
-
-        if not name:
-            return api_error("Task name is required.")
-
-        t = Task.objects.create(contact=contact, name=name, status=status_val)
-        return api_success(
-            data=TaskSerializer(t).data,
-            message="Task created successfully.",
-            status_code=status.HTTP_201_CREATED
         )

@@ -71,23 +71,3 @@ class Contact(models.Model):
         self.is_deleted = True
         self.save(update_fields=['is_deleted', 'updated_at'])
 
-
-class Opportunity(models.Model):
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='related_opportunities')
-    name = models.CharField(max_length=255)
-    stage = models.CharField(max_length=50, default='Negotiation')
-    value = models.CharField(max_length=50, default='$15,000')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.stage})"
-
-
-class Task(models.Model):
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='related_tasks')
-    name = models.CharField(max_length=255)
-    status = models.CharField(max_length=50, default='Pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.status})"

@@ -3,8 +3,6 @@ from contacts.serializers.contact import (
     ContactDetailSerializer,
     ContactCreateSerializer,
     ContactUpdateSerializer,
-    OpportunitySerializer,
-    TaskSerializer,
 )
 
 __all__ = [
@@ -12,6 +10,4 @@ __all__ = [
     'ContactDetailSerializer',
     'ContactCreateSerializer',
     'ContactUpdateSerializer',
-    'OpportunitySerializer',
-    'TaskSerializer',
 ]

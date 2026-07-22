@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from contacts.models import Contact, Opportunity, Task
+from contacts.models import Contact
 
 User = get_user_model()
 
@@ -8,18 +8,6 @@ class UserSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email']
-
-
-class OpportunitySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Opportunity
-        fields = ['id', 'name', 'stage', 'value', 'created_at']
-
-
-class TaskSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Task
-        fields = ['id', 'name', 'status', 'created_at']
 
 
 class ContactListSerializer(serializers.ModelSerializer):
@@ -99,30 +87,13 @@ class ContactDetailSerializer(serializers.ModelSerializer):
         return "Unassigned"
 
     def get_related_opportunities(self, obj):
-        opps = obj.related_opportunities.all()
-        if opps.exists():
-            return OpportunitySerializer(opps, many=True).data
-        return [
-            {"id": 1, "name": "CRM Project", "stage": "Negotiation", "value": "$15,000"}
-        ]
+        return []
 
     def get_activities(self, obj):
-        return [
-            {"id": 1, "title": "Contact Created", "timestamp": obj.created_at},
-            {"id": 2, "title": "Phone Call", "timestamp": obj.created_at},
-            {"id": 3, "title": "Meeting Scheduled", "timestamp": obj.created_at},
-            {"id": 4, "title": "Proposal Sent", "timestamp": obj.created_at},
-        ]
+        return []
 
     def get_related_tasks(self, obj):
-        tasks = obj.related_tasks.all()
-        if tasks.exists():
-            return TaskSerializer(tasks, many=True).data
-        return [
-            {"id": 1, "name": "Follow-up Call", "status": "Pending"},
-            {"id": 2, "name": "Send Proposal", "status": "Pending"},
-            {"id": 3, "name": "Schedule Meeting", "status": "Pending"},
-        ]
+        return []
 
 
 class ContactCreateSerializer(serializers.ModelSerializer):
