@@ -1,0 +1,136 @@
+from django.db import models
+from django.conf import settings
+from django.core.exceptions import ValidationError
+
+class Lead(models.Model):
+    """
+    Lead model representing the entry point of the leads.
+    Designed for simplicity, using default Django BigAutoField and keeping
+    business logic decoupled.
+    """
+
+    # Enums using Django TextChoices
+    class LeadStatus(models.TextChoices):
+        NEW = 'NEW', 'New'
+        CONTACTED = 'CONTACTED', 'Contacted'
+        QUALIFIED = 'QUALIFIED', 'Qualified'
+        DEMO_SCHEDULED = 'DEMO_SCHEDULED', 'Demo Scheduled'
+        PROPOSAL_SENT = 'PROPOSAL_SENT', 'Proposal Sent'
+        CONVERTED = 'CONVERTED', 'Converted'
+        LOST = 'LOST', 'Lost'
+
+    class Priority(models.TextChoices):
+        LOW = 'LOW', 'Low'
+        MEDIUM = 'MEDIUM', 'Medium'
+        HIGH = 'HIGH', 'High'
+
+    class LeadSource(models.TextChoices):
+        WEBSITE = 'WEBSITE', 'Website'
+        FACEBOOK = 'FACEBOOK', 'Facebook'
+        GOOGLE_ADS = 'GOOGLE_ADS', 'Google Ads'
+        REFERRAL = 'REFERRAL', 'Referral'
+        WALK_IN = 'WALK_IN', 'Walk-in'
+        PHONE_CALL = 'PHONE_CALL', 'Phone Call'
+        EMAIL_CAMPAIGN = 'EMAIL_CAMPAIGN', 'Email Campaign'
+        OTHER = 'OTHER', 'Other'
+
+    class LostReason(models.TextChoices):
+        BUDGET_TOO_HIGH = 'BUDGET_TOO_HIGH', 'Budget Too High'
+        NOT_INTERESTED = 'NOT_INTERESTED', 'Not Interested'
+        COMPETITOR_CHOSEN = 'COMPETITOR_CHOSEN', 'Competitor Chosen'
+        NO_RESPONSE = 'NO_RESPONSE', 'No Response'
+        WRONG_CONTACT = 'WRONG_CONTACT', 'Wrong Contact'
+        PROJECT_POSTPONED = 'PROJECT_POSTPONED', 'Project Postponed'
+        DUPLICATE_LEAD = 'DUPLICATE_LEAD', 'Duplicate Lead'
+        OTHER = 'OTHER', 'Other'
+
+    # Core Fields
+    full_name = models.CharField(max_length=255, db_index=True)
+    phone = models.CharField(max_length=20, db_index=True, help_text="Phone number for the lead.")
+    email = models.EmailField(blank=True, null=True, db_index=True)
+    company_name = models.CharField(max_length=255, help_text="Prospect company name as text.")
+    
+    # Metadata & Categorization
+    source = models.CharField(
+        max_length=50,
+        choices=LeadSource.choices,
+        default=LeadSource.OTHER,
+        db_index=True
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+        db_index=True
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=LeadStatus.choices,
+        default=LeadStatus.NEW,
+        db_index=True
+    )
+
+    # Assignment
+    assigned_salesperson = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_leads',
+        help_text="The salesperson assigned to this lead."
+    )
+
+    # Engagement Tracking
+    notes = models.TextField(blank=True, null=True)
+    last_contact_date = models.DateTimeField(null=True, blank=True)
+    contact_attempts = models.PositiveIntegerField(default=0)
+
+    # Conversion Flag
+    is_converted = models.BooleanField(default=False, db_index=True)
+
+    # Lost Details
+    lost_reason = models.CharField(
+        max_length=50,
+        choices=LostReason.choices,
+        null=True,
+        blank=True
+    )
+    lost_notes = models.TextField(blank=True, null=True)
+
+    # Audit Timestamps
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Lead"
+        verbose_name_plural = "Leads"
+        indexes = [
+            # Compound index for active leads assigned to salesperson
+            models.Index(fields=['assigned_salesperson', 'status', 'is_converted']),
+        ]
+
+    def __str__(self):
+        return f"{self.lead_code} - {self.full_name}"
+
+    @property
+    def lead_code(self):
+        """Generates a human-readable identifier based on the DB ID, e.g. LD-000001"""
+        if self.id:
+            return f"LD-{self.id:06d}"
+        return None
+
+    def clean(self):
+        super().clean()
+        
+        # Basic validation: ensure lost reason exists if status is Lost
+        if self.status == self.LeadStatus.LOST:
+            if not self.lost_reason:
+                raise ValidationError(
+                    {"lost_reason": "A lost reason must be provided when a lead is marked as 'Lost'."}
+                )
+        else:
+            if self.lost_reason or self.lost_notes:
+                raise ValidationError(
+                    "Lost reason and lost notes can only be set when status is 'Lost'."
+                )

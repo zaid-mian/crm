@@ -1,0 +1,149 @@
+/* Custom styling for CRM Testing Client extending Bootstrap 5 */
+
+:root {
+    --primary-color: #0d6efd;
+    --primary-hover: #0b5ed7;
+    --dark-neutral: #212529;
+    --bg-light: #f8f9fa;
+    --border-color: #dee2e6;
+    --badge-new: #0d6efd;
+    --badge-contacted: #6f42c1;
+    --badge-qualified: #fd7e14;
+    --badge-demo: #20c997;
+    --badge-proposal: #17a2b8;
+    --badge-converted: #198754;
+    --badge-lost: #dc3545;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--dark-neutral);
+}
+
+.font-weight-semibold {
+    font-weight: 600;
+}
+
+.font-weight-medium {
+    font-weight: 500;
+}
+
+/* Card customizations */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 8px;
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.08) !important;
+    transform: translateY(-2px);
+}
+
+/* Custom table badges */
+.badge-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.badge-status-new { background-color: rgba(13, 110, 253, 0.1); color: var(--badge-new); }
+.badge-status-contacted { background-color: rgba(111, 66, 193, 0.1); color: var(--badge-contacted); }
+.badge-status-qualified { background-color: rgba(253, 126, 20, 0.1); color: var(--badge-qualified); }
+.badge-status-demo_scheduled { background-color: rgba(32, 201, 151, 0.1); color: var(--badge-demo); }
+.badge-status-proposal_sent { background-color: rgba(23, 162, 184, 0.1); color: var(--badge-proposal); }
+.badge-status-converted { background-color: rgba(25, 135, 84, 0.1); color: var(--badge-converted); }
+.badge-status-lost { background-color: rgba(220, 53, 69, 0.1); color: var(--badge-lost); }
+
+.badge-priority-low { background-color: #e2e3e5; color: #383d41; }
+.badge-priority-medium { background-color: #fff3cd; color: #856404; }
+.badge-priority-high { background-color: #f8d7da; color: #721c24; }
+
+/* Sticky Developer debugging Panel */
+.dev-panel {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-column: column;
+    border-left: 1px solid var(--border-color);
+}
+
+.dev-panel-body {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* Custom JSON formatting styles */
+pre.json-viewer {
+    background-color: #272822;
+    color: #f8f8f2;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    max-height: 250px;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+pre.json-viewer .string { color: #a6e22e; }
+pre.json-viewer .number { color: #ae81ff; }
+pre.json-viewer .boolean { color: #66d9ef; }
+pre.json-viewer .null { color: #f92672; }
+pre.json-viewer .key { color: #f92672; }
+
+/* Network Logs feed styling */
+.log-item {
+    font-size: 0.8rem;
+    border-left: 3px solid #6c757d;
+    transition: background-color 0.2s ease;
+}
+
+.log-item:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+.log-item.method-get { border-left-color: #198754; }
+.log-item.method-post { border-left-color: #0d6efd; }
+.log-item.method-put { border-left-color: #fd7e14; }
+.log-item.method-patch { border-left-color: #6f42c1; }
+.log-item.method-delete { border-left-color: #dc3545; }
+
+/* Sticky controls page elements */
+.sticky-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: var(--bg-light);
+    padding-bottom: 12px;
+}
+
+/* Offcanvas form customization */
+.offcanvas {
+    width: 480px !important;
+}
+
+/* Activity Timeline styles */
+.timeline {
+    border-left: 2px solid var(--border-color);
+    padding-left: 20px;
+    position: relative;
+}
+
+.timeline-item {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    left: -26px;
+    top: 5px;
+}

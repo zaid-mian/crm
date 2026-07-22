@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Lead API Testing Workspace</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <a href="index.html" class="navbar-brand mb-0 h1 d-flex align-items-center">
+                <span class="text-primary me-2 font-weight-bold">&laquo;</span>
+                <span class="small font-weight-medium">AdaptCRM Leads Tester</span>
+            </a>
+            <span class="navbar-text text-muted small">
+                Connected Base: <span id="connectedBaseDisplay" class="font-monospace text-light">http://localhost:8000</span>
+            </span>
+        </div>
+    </nav>
+
+    <!-- App alert notifications container -->
+    <div class="container-fluid px-4 mt-3" id="mainAlertContainer"></div>
+
+    <div class="container-fluid px-4 my-4">
+        <div class="row g-4">
+            
+            <!-- Left Workspace Panel (70%): CRM Dashboard Emulator -->
+            <div class="col-lg-8 col-xl-9">
+                
+                <!-- Lead Statistics Cards Row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-secondary text-uppercase font-weight-medium small mb-1">Total Leads</small>
+                            <h3 class="mb-0 text-dark font-weight-bold" id="statTotal">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-primary text-uppercase font-weight-medium small mb-1">New</small>
+                            <h3 class="mb-0 text-primary font-weight-bold" id="statNew">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-warning text-uppercase font-weight-medium small mb-1">Qualified</small>
+                            <h3 class="mb-0 text-warning font-weight-bold" id="statQualified">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-success text-uppercase font-weight-medium small mb-1">Converted</small>
+                            <h3 class="mb-0 text-success font-weight-bold" id="statConverted">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-danger text-uppercase font-weight-medium small mb-1">Lost</small>
+                            <h3 class="mb-0 text-danger font-weight-bold" id="statLost">-</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters Toolbar Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body py-3">
+                        <div class="row g-3 align-items-center">
+                            <!-- Search -->
+                            <div class="col-md-3 col-sm-6">
+                                <input type="text" class="form-control form-control-sm" id="searchBox" placeholder="Search by name, email, code...">
+                            </div>
+                            <!-- Status Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterStatus">
+                                    <option value="">All Statuses</option>
+                                    <option value="NEW">New</option>
+                                    <option value="CONTACTED">Contacted</option>
+                                    <option value="QUALIFIED">Qualified</option>
+                                    <option value="DEMO_SCHEDULED">Demo Scheduled</option>
+                                    <option value="PROPOSAL_SENT">Proposal Sent</option>
+                                    <option value="CONVERTED">Converted</option>
+                                    <option value="LOST">Lost</option>
+                                </select>
+                            </div>
+                            <!-- Source Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterSource">
+                                    <option value="">All Sources</option>
+                                    <option value="WEBSITE">Website</option>
+                                    <option value="FACEBOOK">Facebook</option>
+                                    <option value="GOOGLE_ADS">Google Ads</option>
+                                    <option value="REFERRAL">Referral</option>
+                                    <option value="WALK_IN">Walk-in</option>
+                                    <option value="PHONE_CALL">Phone Call</option>
+                                    <option value="EMAIL_CAMPAIGN">Email Campaign</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <!-- Priority Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterPriority">
+                                    <option value="">All Priorities</option>
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                            <!-- Owner Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterOwner">
+                                    <option value="">All Owners</option>
+                                    <option value="1">Salesperson #1</option>
+                                    <option value="2">Salesperson #2</option>
+                                    <option value="3">Salesperson #3</option>
+                                </select>
+                            </div>
+                            <!-- Add Lead Action Trigger -->
+                            <div class="col-md-auto col-sm-12 text-end">
+                                <button id="addLeadBtn" class="btn btn-primary btn-sm px-3">+ Add Lead</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lead Table Grid Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light text-secondary small">
+                                    <tr>
+                                        <th style="width: 50px;">#</th>
+                                        <th data-ordering="id">Lead ID</th>
+                                        <th data-ordering="full_name">Customer</th>
+                                        <th data-ordering="company_name">Company</th>
+                                        <th>Phone</th>
+                                        <th>Source</th>
+                                        <th data-ordering="assigned_salesperson">Owner</th>
+                                        <th data-ordering="priority">Priority</th>
+                                        <th data-ordering="status">Status</th>
+                                        <th class="text-end" style="width: 250px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leadsTableBody" class="small">
+                                    <!-- Dynamic Rows Loaded Here -->
+                                    <tr><td colspan="10" class="text-center py-4 text-muted">Ingesting data from Django server...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Table footer controls (Pagination) -->
+                    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <div class="text-muted small">
+                            Listing active pages. Ordering: <span id="activeOrdering" class="font-monospace text-dark">-created_at</span>
+                        </div>
+                        <nav id="leadsPagination" aria-label="Lead Page Navigation"></nav>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Workspace Panel (30%): Developer Debugging Console -->
+            <div class="col-lg-4 col-xl-3">
+                <div class="card shadow-sm border-0 dev-panel">
+                    <div class="card-header bg-dark text-white py-3 border-0 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 font-weight-semibold">Developer Debug Panel</h6>
+                        <span class="badge bg-secondary font-monospace text-uppercase" style="font-size: 0.65rem;">API Logs</span>
+                    </div>
+                    
+                    <!-- Config Token Box inside Panel Header -->
+                    <div class="p-2 border-bottom bg-light">
+                        <div class="mb-2">
+                            <label class="form-label small text-muted text-uppercase mb-1" style="font-size: 0.65rem;">Auth Method</label>
+                            <select class="form-select form-select-sm" id="authMethodOverride">
+                                <option value="basic" selected>Basic Auth</option>
+                                <option value="token">Token Header</option>
+                                <option value="session">Session Cookies</option>
+                            </select>
+                        </div>
+                        <div id="tokenOverrideGroup">
+                            <label class="form-label small text-muted text-uppercase mb-1" style="font-size: 0.65rem;">Token Value</label>
+                            <input type="text" class="form-control form-control-sm font-monospace" id="authTokenOverride" placeholder="Bearer eyJhbGciOi...">
+                        </div>
+                        <div id="basicOverrideGroup" class="d-none">
+                            <div class="mb-1">
+                                <input type="text" class="form-control form-control-sm" id="authUsernameOverride" placeholder="Username">
+                            </div>
+                            <div>
+                                <input type="password" class="form-control form-control-sm" id="authPasswordOverride" placeholder="Password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dev-panel-body p-3">
+                        
+                        <!-- Dedicated Request Details Viewer -->
+                        <div class="card border border-secondary border-opacity-10 shadow-none mb-3">
+                            <div class="card-header bg-light py-2 border-bottom text-muted font-weight-medium small" style="font-size: 0.75rem;">
+                                Active Request/Response Details
+                            </div>
+                            <div class="card-body p-3" id="requestDetailViewer">
+                                <div class="text-center text-muted small py-4">Trigger an API event to inspect the JSON query structures.</div>
+                            </div>
+                        </div>
+
+                        <!-- Real-time network transaction logs -->
+                        <h6 class="text-secondary text-uppercase mb-2 font-weight-semibold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Network log history</h6>
+                        <div class="list-group list-group-flush border rounded overflow-hidden" id="logList">
+                            <div class="text-center py-3 text-muted small">No API calls recorded.</div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Reusable Offcanvas Drawer Component (Bootstrap Right Panel) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="leadDrawer" aria-labelledby="drawerTitle">
+        <div class="offcanvas-header bg-light border-bottom">
+            <h5 class="offcanvas-title font-weight-semibold" id="drawerTitle">Add Lead</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body" id="drawerContent">
+            <!-- Dynamic Form contents injected here -->
+        </div>
+    </div>
+
+    <!-- Convert Lead Confirmation Modal -->
+    <div class="modal fade" id="convertModal" tabindex="-1" aria-labelledby="convertModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title font-weight-semibold" id="convertModalTitle">Convert Lead?</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-3 text-dark">Are you sure you want to convert this lead? The workflow transition triggers conversion mapping for the customer record.</p>
+                    <div class="bg-light p-3 rounded border">
+                        <h6 class="font-weight-semibold mb-2" style="font-size: 0.85rem;">This action will map:</h6>
+                        <ul class="list-unstyled mb-0 small">
+                            <li class="d-flex align-items-center mb-1 text-success">
+                                <span class="me-2">&check;</span> Company Profile (Accounts)
+                            </li>
+                            <li class="d-flex align-items-center mb-1 text-success">
+                                <span class="me-2">&check;</span> Contact Identity Profile
+                            </li>
+                            <li class="d-flex align-items-center text-success">
+                                <span class="me-2">&check;</span> Opportunity Pipeline Ticket
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success px-4" id="confirmConvertBtn">Confirm Convert</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mark Lead Lost Modal -->
+    <div class="modal fade" id="lostModal" tabindex="-1" aria-labelledby="lostModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title font-weight-semibold" id="lostModalTitle">Mark Lead Lost</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label class="form-label font-weight-medium">Reason for Loss *</label>
+                        <select class="form-select" id="lostReasonSelect" required>
+                            <option value="BUDGET_TOO_HIGH">Budget Too High</option>
+                            <option value="NOT_INTERESTED">Not Interested</option>
+                            <option value="COMPETITOR_CHOSEN">Competitor Chosen</option>
+                            <option value="NO_RESPONSE">No Response</option>
+                            <option value="WRONG_CONTACT">Wrong Contact</option>
+                            <option value="PROJECT_POSTPONED">Project Postponed</option>
+                            <option value="DUPLICATE_LEAD">Duplicate Lead</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label font-weight-medium">Loss Notes (Internal context)</label>
+                        <textarea class="form-control" id="lostNotesInput" rows="3" placeholder="Describe the barrier..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmLostBtn">Confirm Lost</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS (Includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- CRM Testing JS Core -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/leads.js"></script>
+    <script>
+        // Update connected Base Display URL on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const display = document.getElementById('connectedBaseDisplay');
+            if (display) {
+                display.innerText = localStorage.getItem('api_base_url') || 'http://localhost:8000';
+            }
+        });
+    </script>
+</body>
+</html>

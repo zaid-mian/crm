@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM API Testing Hub</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1 font-weight-bold">
+                <span class="text-primary">Adapt</span>CRM API Testing Hub
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Container -->
+    <div class="container my-5">
+        <div class="row">
+            
+            <!-- Global Configurations Card -->
+            <div class="col-lg-4 mb-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 text-dark font-weight-semibold">Global API Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="apiBaseUrl" class="form-label font-weight-medium">Backend Base URL</label>
+                            <input type="url" class="form-control" id="apiBaseUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+                            <div class="form-text text-muted">Core Django server URL.</div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small text-muted text-uppercase mb-1" style="font-size: 0.65rem;">Auth Method</label>
+                            <select class="form-select form-select-sm" id="authMethod">
+                                <option value="basic" selected>Basic Auth</option>
+                                <option value="token">Token Header</option>
+                                <option value="session">Session Cookies</option>
+                            </select>
+                        </div>
+                        <div id="tokenGroup" class="mb-3">
+                            <label for="authToken" class="form-label font-weight-medium">Authorization Token</label>
+                            <textarea class="form-control" id="authToken" rows="3" placeholder="Bearer eyJhbGciOi..."></textarea>
+                            <div class="form-text text-muted">Attach manual headers.</div>
+                        </div>
+                        <div id="basicGroup" class="mb-3 d-none">
+                            <div class="mb-2">
+                                <label for="authUsername" class="form-label font-weight-medium">Username</label>
+                                <input type="text" class="form-control" id="authUsername" placeholder="salesperson_1">
+                            </div>
+                            <div>
+                                <label for="authPassword" class="form-label font-weight-medium">Password</label>
+                                <input type="password" class="form-control" id="authPassword" placeholder="••••••••">
+                            </div>
+                        </div>
+                        <div id="sessionGroup" class="mb-3 d-none">
+                            <div class="alert alert-info py-2 small" role="alert">
+                                Log in to the <a href="http://localhost:8000/admin/" target="_blank" class="alert-link">Django Admin</a> console in this browser first to fetch session cookies.
+                            </div>
+                        </div>
+                        <button id="saveConfigBtn" class="btn btn-primary w-100 py-2">Save Configuration</button>
+                        <div id="configAlert" class="alert alert-success mt-3 py-2 d-none" role="alert">
+                            Configurations saved successfully!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testing Modules Catalog Grid -->
+            <div class="col-lg-8 mb-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 text-dark font-weight-semibold">CRM Modules Testing Catalog</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            
+                            <!-- Leads Module Card (Active) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border border-primary border-opacity-25 shadow-none hover-shadow">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="bg-primary bg-opacity-10 text-primary rounded p-2 me-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-person-badge" viewBox="0 0 16 16">
+                                                    <path d="M6.5 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+                                                    <path d="M4.5 0A2.5 2.5 0 0 0 2 2.5V14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2.5A2.5 2.5 0 0 0 11.5 0zM3 2.5A1.5 1.5 0 0 1 4.5 1h7A1.5 1.5 0 0 1 13 2.5v10.793L11.854 12.15a.5.5 0 0 0-.707 0L10 13.293 8.354 11.646a.5.5 0 0 0-.707 0L6 13.293 4.354 11.646a.5.5 0 0 0-.707 0L3 13.293z"/>
+                                                </svg>
+                                            </div>
+                                            <h6 class="mb-0 text-dark font-weight-semibold">Lead Module</h6>
+                                        </div>
+                                        <p class="card-text text-secondary small flex-grow-1">
+                                            Ingest, update, assign, mark lost, and convert lead records. Tests CRUD operations, validations, and stats endpoints.
+                                        </p>
+                                        <a href="leads.html" class="btn btn-outline-primary w-100 mt-3 py-2">Launch Lead Workspace</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Companies Module Card (Placeholder) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border border-light shadow-none opacity-75">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="bg-secondary bg-opacity-10 text-secondary rounded p-2 me-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-building" viewBox="0 0 16 16">
+                                                    <path d="M4 2.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM4 5.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM4 8.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zM4 11.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/>
+                                                    <path d="M2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1zm11 14V1H3v14z"/>
+                                                </svg>
+                                            </div>
+                                            <h6 class="mb-0 text-secondary font-weight-semibold">Companies Module</h6>
+                                        </div>
+                                        <p class="card-text text-secondary small flex-grow-1">
+                                            Manage corporate accounts, track customer organizations, and log company-specific metadata.
+                                        </p>
+                                        <button class="btn btn-outline-secondary w-100 mt-3 py-2" disabled>Coming Soon</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Contacts Module Card (Placeholder) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border border-light shadow-none opacity-75">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="bg-secondary bg-opacity-10 text-secondary rounded p-2 me-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-telephone-contact" viewBox="0 0 16 16">
+                                                    <path d="M3.5 2a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zM1 5.5A1.5 1.5 0 0 1 2.5 4h11A1.5 1.5 0 0 1 15 5.5v9a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5zM2.5 5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5z"/>
+                                                    <path d="M6 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m0 1a3 3 0 0 0-3 3 .5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5 3 3 0 0 0-3-3m5.854-3.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"/>
+                                                </svg>
+                                            </div>
+                                            <h6 class="mb-0 text-secondary font-weight-semibold">Contacts Module</h6>
+                                        </div>
+                                        <p class="card-text text-secondary small flex-grow-1">
+                                            Track prospect individuals, contact info, communication channels, and personal parameters.
+                                        </p>
+                                        <button class="btn btn-outline-secondary w-100 mt-3 py-2" disabled>Coming Soon</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Opportunities Module Card (Placeholder) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border border-light shadow-none opacity-75">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="bg-secondary bg-opacity-10 text-secondary rounded p-2 me-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-briefcase" viewBox="0 0 16 16">
+                                                    <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5m1.886 6.914L15 7.151V12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V7.15l6.614 1.764a1.5 1.5 0 0 0 .772 0M1.5 4h13a.5.5 0 0 1 .5.5v1.616L8.129 7.948a.5.5 0 0 1-.258 0L1 6.116V4.5a.5.5 0 0 1 .5-.5"/>
+                                                </svg>
+                                            </div>
+                                            <h6 class="mb-0 text-secondary font-weight-semibold">Opportunities Module</h6>
+                                        </div>
+                                        <p class="card-text text-secondary small flex-grow-1">
+                                            Manage deal pipelines, sales workflows, probabilities, and estimated revenues.
+                                        </p>
+                                        <button class="btn btn-outline-secondary w-100 mt-3 py-2" disabled>Coming Soon</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiBaseInput = document.getElementById('apiBaseUrl');
+            const authMethodSelect = document.getElementById('authMethod');
+            const authTokenInput = document.getElementById('authToken');
+            const authUsernameInput = document.getElementById('authUsername');
+            const authPasswordInput = document.getElementById('authPassword');
+            
+            const tokenGroup = document.getElementById('tokenGroup');
+            const basicGroup = document.getElementById('basicGroup');
+            const sessionGroup = document.getElementById('sessionGroup');
+            
+            const saveBtn = document.getElementById('saveConfigBtn');
+            const alertDiv = document.getElementById('configAlert');
+
+            // Toggle Groups Display function
+            function updateVisibility() {
+                const method = authMethodSelect.value;
+                tokenGroup.classList.add('d-none');
+                basicGroup.classList.add('d-none');
+                sessionGroup.classList.add('d-none');
+                
+                if (method === 'token') tokenGroup.classList.remove('d-none');
+                if (method === 'basic') basicGroup.classList.remove('d-none');
+                if (method === 'session') sessionGroup.classList.remove('d-none');
+            }
+
+            authMethodSelect.addEventListener('change', updateVisibility);
+
+            // Load existing configurations
+            apiBaseInput.value = localStorage.getItem('api_base_url') || 'http://localhost:8000';
+            // Initialize values from localStorage
+            authMethodSelect.value = localStorage.getItem('auth_method') || 'basic';
+            authTokenInput.value = localStorage.getItem('auth_token') || '';
+            authUsernameInput.value = localStorage.getItem('auth_username') || '';
+            authPasswordInput.value = localStorage.getItem('auth_password') || '';
+            
+            updateVisibility();
+
+            saveBtn.addEventListener('click', () => {
+                localStorage.setItem('api_base_url', apiBaseInput.value.trim());
+                localStorage.setItem('auth_method', authMethodSelect.value);
+                localStorage.setItem('auth_token', authTokenInput.value.trim());
+                localStorage.setItem('auth_username', authUsernameInput.value.trim());
+                localStorage.setItem('auth_password', authPasswordInput.value.trim());
+                
+                // Show success alert
+                alertDiv.classList.remove('d-none');
+                setTimeout(() => {
+                    alertDiv.classList.add('d-none');
+                }, 3000);
+            });
+        });
+    </script>
+</body>
+</html>
