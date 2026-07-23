@@ -79,7 +79,18 @@ class ContactDetailSerializer(serializers.ModelSerializer):
         return "Unassigned"
 
     def get_related_opportunities(self, obj):
-        return []
+        from opportunities.models import Opportunity
+        opps = Opportunity.objects.filter(primary_contact=obj)
+        return [
+            {
+                "id": opp.id,
+                "opportunity_code": opp.opportunity_code,
+                "name": opp.name,
+                "stage": opp.get_stage_display(),
+                "value": f"${opp.amount:.2f}"
+            }
+            for opp in opps
+        ]
 
     def get_activities(self, obj):
         return []

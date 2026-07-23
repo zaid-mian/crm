@@ -57,7 +57,9 @@ class LeadWorkflowService:
     @staticmethod
     @transaction.atomic
     def convert_lead(lead: Lead) -> Lead:
+        from datetime import timedelta
         from contacts.models import Contact
+        from opportunities.models import Opportunity
         
         LeadWorkflowManager.validate_convert(lead)
         lead.status = Lead.LeadStatus.CONVERTED
@@ -66,13 +68,25 @@ class LeadWorkflowService:
         lead.save()
 
         # Create corresponding Contact inside the same transaction
-        Contact.objects.create(
+        contact = Contact.objects.create(
             full_name=lead.full_name,
             company_name=lead.company_name,
             phone_number=lead.phone or '',
             email=lead.email,
             assigned_salesperson=lead.assigned_salesperson,
             notes=lead.notes
+        )
+
+        # Create corresponding Opportunity inside the same transaction
+        Opportunity.objects.create(
+            name=f"{lead.company_name} - Initial Opportunity",
+            company_name=lead.company_name,
+            source_lead=lead,
+            primary_contact=contact,
+            assigned_salesperson=lead.assigned_salesperson,
+            lead_source=lead.source,
+            expected_close_date=timezone.now().date() + timedelta(days=30),
+            description=lead.notes or ""
         )
         return lead
 
