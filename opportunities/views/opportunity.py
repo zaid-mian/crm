@@ -56,7 +56,7 @@ class OpportunityViewSet(
     filterset_class = OpportunityFilter
     ordering_fields = ['created_at', 'amount', 'expected_close_date']
     ordering = ['-created_at']
-    search_fields = ['name', 'company_name']
+    search_fields = ['name', 'company__name']
 
     def get_permissions(self):
         """

@@ -11,7 +11,24 @@ class Contact(models.Model):
     Contact model representing contact records in the CRM system.
     """
     full_name = models.CharField(max_length=255, db_index=True)
-    company_name = models.CharField(max_length=255, blank=True, default='', help_text="Prospect company name.")
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.PROTECT,
+        related_name='contacts'
+    )
+
+    @property
+    def company_name(self):
+        return self.company.name if self.company else ""
+
+    @company_name.setter
+    def company_name(self, value):
+        if value:
+            from companies.models import Company
+            company, _ = Company.objects.get_or_create(
+                name=value.strip()
+            )
+            self.company = company
     designation = models.CharField(max_length=255, blank=True, default='', help_text="Job title or designation.")
     phone_number = models.CharField(max_length=20, db_index=True, help_text="Primary phone number.")
     email = models.EmailField(blank=True, null=True, db_index=True)
@@ -65,6 +82,16 @@ class Contact(models.Model):
     @property
     def phone(self):
         return self.phone_number
+
+    def save(self, *args, **kwargs):
+        if not hasattr(self, 'company') or self.company is None:
+            from companies.models import Company
+            company, _ = Company.objects.get_or_create(
+                name="Default Company",
+                defaults={"website": "https://default.com"}
+            )
+            self.company = company
+        super().save(*args, **kwargs)
 
     def soft_delete(self):
         """Soft deletes the contact record."""

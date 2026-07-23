@@ -17,7 +17,24 @@ class Opportunity(models.Model):
     Opportunity model representing a qualified sales deal in the CRM system.
     """
     name = models.CharField(max_length=255, db_index=True)
-    company_name = models.CharField(max_length=255, db_index=True)
+    company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.PROTECT,
+        related_name='opportunities'
+    )
+
+    @property
+    def company_name(self):
+        return self.company.name if self.company else ""
+
+    @company_name.setter
+    def company_name(self, value):
+        if value:
+            from companies.models import Company
+            company, _ = Company.objects.get_or_create(
+                name=value.strip()
+            )
+            self.company = company
     source_lead = models.ForeignKey(Lead, on_delete=models.PROTECT, related_name='opportunities')
     primary_contact = models.ForeignKey(Contact, on_delete=models.PROTECT, related_name='opportunities')
     
@@ -92,3 +109,13 @@ class Opportunity(models.Model):
         """Expected weighted revenue (Amount * Probability / 100)"""
         from decimal import Decimal
         return (self.amount * Decimal(self.probability)) / 100
+
+    def save(self, *args, **kwargs):
+        if not hasattr(self, 'company') or self.company is None:
+            from companies.models import Company
+            company, _ = Company.objects.get_or_create(
+                name="Default Company",
+                defaults={"website": "https://default.com"}
+            )
+            self.company = company
+        super().save(*args, **kwargs)

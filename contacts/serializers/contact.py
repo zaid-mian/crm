@@ -101,6 +101,7 @@ class ContactDetailSerializer(serializers.ModelSerializer):
 
 class ContactCreateSerializer(serializers.ModelSerializer):
     contact_code = serializers.CharField(read_only=True)
+    company_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Contact
@@ -135,6 +136,7 @@ class ContactCreateSerializer(serializers.ModelSerializer):
 
 class ContactUpdateSerializer(serializers.ModelSerializer):
     contact_code = serializers.CharField(read_only=True)
+    company_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Contact

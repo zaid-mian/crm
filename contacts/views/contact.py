@@ -49,14 +49,14 @@ class ContactViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = Contact.objects.filter(is_deleted=False)
+    queryset = Contact.objects.filter(is_deleted=False).select_related('company', 'assigned_salesperson')
     permission_classes = [IsAuthenticated, IsContactOwnerOrManager]
     pagination_class = ContactPagination
 
     filter_backends = [DjangoFilterBackend, ContactSearchFilter, filters.OrderingFilter]
     filterset_class = ContactFilter
-    search_fields = ['full_name', 'phone_number', 'email', 'company_name', 'designation']
-    ordering_fields = ['created_at', 'updated_at', 'full_name', 'company_name', 'status']
+    search_fields = ['full_name', 'phone_number', 'email', 'company__name', 'designation']
+    ordering_fields = ['created_at', 'updated_at', 'full_name', 'company__name', 'status']
     ordering = ['-created_at']
 
     serializer_action_classes = {
