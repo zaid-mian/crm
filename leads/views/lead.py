@@ -165,6 +165,7 @@ class LeadViewSet(
                 "lead_code": lead.lead_code,
                 "status": lead.status,
                 "is_converted": lead.is_converted,
+                "converted_at": lead.converted_at,
                 "updated_at": lead.updated_at
             },
             message="Lead converted successfully."
@@ -191,6 +192,22 @@ class LeadViewSet(
                 "updated_at": lead.updated_at
             },
             message="Lead marked as Lost."
+        )
+
+    # Custom Action: Mark Contacted
+    @action(detail=True, methods=['post'])
+    def contacted(self, request, pk=None):
+        lead = self.get_object()
+        lead = LeadWorkflowService.mark_contacted(lead)
+
+        return api_success(
+            data={
+                "id": lead.id,
+                "lead_code": lead.lead_code,
+                "status": lead.status,
+                "updated_at": lead.updated_at
+            },
+            message="Lead marked as Contacted."
         )
 
     # Custom Action: Stats

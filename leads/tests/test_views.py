@@ -253,3 +253,59 @@ class LeadViewSetTestCase(APITestCase):
             response = self.client.get(self.list_url)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data["data"]["results"]), 3)
+
+    def test_view_create_lead_with_email_only_success(self):
+        """Verify lead creation succeeds with email only (phone optional)."""
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "full_name": "Email Only Lead",
+            "company_name": "Acme Inc",
+            "email": "onlyemail@example.com"
+        }
+        response = self.client.post(self.list_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["data"]["full_name"], "Email Only Lead")
+        self.assertEqual(response.data["data"]["phone"], "")
+
+    def test_view_create_lead_with_phone_only_success(self):
+        """Verify lead creation succeeds with phone only (email optional)."""
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "full_name": "Phone Only Lead",
+            "company_name": "Acme Inc",
+            "phone": "+9999"
+        }
+        response = self.client.post(self.list_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["data"]["full_name"], "Phone Only Lead")
+        self.assertIsNone(response.data["data"]["email"])
+
+    def test_view_create_lead_with_neither_fails(self):
+        """Verify lead creation fails if both email and phone are empty."""
+        self.client.force_authenticate(user=self.admin)
+        payload = {
+            "full_name": "Invalid Lead",
+            "company_name": "Acme Inc"
+        }
+        response = self.client.post(self.list_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
+
+    def test_view_action_contacted_success(self):
+        """Verify explicit POST to /contacted/ transitions lead to CONTACTED status."""
+        self.client.force_authenticate(user=self.sales_a)
+        contacted_url = reverse('leads:lead-contacted', kwargs={'pk': self.lead_a.pk})
+        
+        response = self.client.post(contacted_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["data"]["status"], Lead.LeadStatus.CONTACTED)
+
+    def test_view_action_convert_populates_converted_at(self):
+        """Verify conversion view action returns converted_at value."""
+        self.client.force_authenticate(user=self.manager)
+        convert_url = reverse('leads:lead-convert', kwargs={'pk': self.lead_a.pk})
+        
+        response = self.client.post(convert_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data["data"]["converted_at"])

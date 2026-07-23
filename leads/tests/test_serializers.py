@@ -124,3 +124,51 @@ class LeadSerializerTestCase(TestCase):
         serializer = LeadDetailSerializer(instance=lead)
         self.assertEqual(serializer.data["activities"], [])
         self.assertEqual(serializer.data["tasks"], [])
+
+    def test_email_or_phone_required_validation(self):
+        """Verify that validation requires at least email or phone."""
+        # 1. Success with only email
+        data_email_only = {
+            "full_name": "Email Only",
+            "company_name": "Acme Inc",
+            "email": "only_email@example.com"
+        }
+        serializer = LeadCreateSerializer(data=data_email_only)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        # 2. Success with only phone
+        data_phone_only = {
+            "full_name": "Phone Only",
+            "company_name": "Acme Inc",
+            "phone": "+12345"
+        }
+        serializer2 = LeadCreateSerializer(data=data_phone_only)
+        self.assertTrue(serializer2.is_valid(), serializer2.errors)
+
+        # 3. Failure with neither
+        data_neither = {
+            "full_name": "Neither",
+            "company_name": "Acme Inc"
+        }
+        serializer3 = LeadCreateSerializer(data=data_neither)
+        self.assertFalse(serializer3.is_valid())
+        self.assertIn("non_field_errors", serializer3.errors)
+
+    def test_phone_duplicate_validation_ignores_blank(self):
+        """Verify duplicate validation on phone ignores empty string value."""
+        Lead.objects.create(
+            full_name="Blank Phone Lead",
+            phone="",
+            email="blank_email1@example.com",
+            company_name="Acme Inc",
+            is_converted=False
+        )
+
+        data = {
+            "full_name": "Another Blank Phone Lead",
+            "phone": "",
+            "email": "blank_email2@example.com",
+            "company_name": "Acme Inc"
+        }
+        serializer = LeadCreateSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)

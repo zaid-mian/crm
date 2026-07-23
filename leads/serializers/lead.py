@@ -56,6 +56,7 @@ class LeadDetailSerializer(serializers.ModelSerializer):
             'last_contact_date',
             'contact_attempts',
             'is_converted',
+            'converted_at',
             'lost_reason',
             'lost_notes',
             'created_at',
@@ -101,9 +102,18 @@ class LeadCreateSerializer(serializers.ModelSerializer):
         Validate phone is unique among active (non-converted) leads.
         Note: This duplicate check may be extended to support archive/soft-delete later.
         """
+        if not value:
+            return value
         if Lead.objects.filter(phone=value, is_converted=False).exists():
             raise serializers.ValidationError("A lead with this phone number already exists.")
         return value
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        phone = attrs.get('phone')
+        if not email and not phone:
+            raise serializers.ValidationError("At least one contact method (email or phone) must be provided.")
+        return attrs
 
     def validate_email(self, value):
         """
@@ -147,12 +157,21 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
         Validate phone is unique among active (non-converted) leads.
         Note: This duplicate check may be extended to support archive/soft-delete later.
         """
+        if not value:
+            return value
         queryset = Lead.objects.filter(phone=value, is_converted=False)
         if self.instance:
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
             raise serializers.ValidationError("A lead with this phone number already exists.")
         return value
+
+    def validate(self, attrs):
+        email = attrs.get('email', self.instance.email if self.instance else None)
+        phone = attrs.get('phone', self.instance.phone if self.instance else None)
+        if not email and not phone:
+            raise serializers.ValidationError("At least one contact method (email or phone) must be provided.")
+        return attrs
 
     def validate_email(self, value):
         """

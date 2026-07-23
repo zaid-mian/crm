@@ -356,8 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="row mb-3">
                     <div class="col">
-                        <label class="form-label font-weight-medium">Phone Number *</label>
-                        <input type="text" class="form-control" name="phone" placeholder="+15551234" required>
+                        <label class="form-label font-weight-medium">Phone Number</label>
+                        <input type="text" class="form-control" name="phone" placeholder="+15551234">
                     </div>
                     <div class="col">
                         <label class="form-label font-weight-medium">Email Address</label>
@@ -473,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn btn-primary" id="viewEditBtn" ${lead.is_converted ? 'disabled' : ''}>Edit Lead</button>
                         <button class="btn btn-success" id="viewConvertBtn" ${lead.is_converted || lead.status === 'LOST' ? 'disabled' : ''}>Convert</button>
                         <button class="btn btn-danger" id="viewLostBtn" ${lead.is_converted ? 'disabled' : ''}>Mark Lost</button>
+                        <button class="btn btn-warning text-white" id="viewContactedBtn" ${lead.is_converted || lead.status === 'LOST' || lead.status === 'CONTACTED' || lead.status === 'CONVERTED' ? 'disabled' : ''}>Mark Contacted</button>
                     </div>
 
                     <!-- Related modules activities & tasks placeholders (empty) -->
@@ -505,6 +506,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('viewConvertBtn').addEventListener('click', () => {
                     leadDrawer.hide();
                     setTimeout(() => openConvertModal(lead.id), 300);
+                });
+
+                document.getElementById('viewContactedBtn').addEventListener('click', async () => {
+                    try {
+                        const response = await APIClient.post(`/api/leads/${lead.id}/contacted/`);
+                        if (response.success) {
+                            leadDrawer.hide();
+                            UIUtils.showAlert('mainAlertContainer', 'Lead marked as Contacted.');
+                            loadLeads();
+                        }
+                    } catch (error) {
+                        UIUtils.showAlert('mainAlertContainer', error.message || 'Failed to mark contacted.', 'danger');
+                    }
                 });
                 
                 document.getElementById('viewLostBtn').addEventListener('click', () => {
@@ -552,8 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="row mb-3">
                             <div class="col">
-                                <label class="form-label font-weight-medium">Phone Number *</label>
-                                <input type="text" class="form-control" name="phone" value="${lead.phone}" required>
+                                <label class="form-label font-weight-medium">Phone Number</label>
+                                <input type="text" class="form-control" name="phone" value="${lead.phone}">
                             </div>
                             <div class="col">
                                 <label class="form-label font-weight-medium">Email Address</label>

@@ -12,6 +12,7 @@ class Lead(models.Model):
     # Enums using Django TextChoices
     class LeadStatus(models.TextChoices):
         NEW = 'NEW', 'New'
+        ASSIGNED = 'ASSIGNED', 'Assigned'
         CONTACTED = 'CONTACTED', 'Contacted'
         QUALIFIED = 'QUALIFIED', 'Qualified'
         DEMO_SCHEDULED = 'DEMO_SCHEDULED', 'Demo Scheduled'
@@ -46,7 +47,7 @@ class Lead(models.Model):
 
     # Core Fields
     full_name = models.CharField(max_length=255, db_index=True)
-    phone = models.CharField(max_length=20, db_index=True, help_text="Phone number for the lead.")
+    phone = models.CharField(max_length=20, db_index=True, blank=True, default='', help_text="Phone number for the lead.")
     email = models.EmailField(blank=True, null=True, db_index=True)
     company_name = models.CharField(max_length=255, help_text="Prospect company name as text.")
     
@@ -87,6 +88,7 @@ class Lead(models.Model):
 
     # Conversion Flag
     is_converted = models.BooleanField(default=False, db_index=True)
+    converted_at = models.DateTimeField(null=True, blank=True)
 
     # Lost Details
     lost_reason = models.CharField(

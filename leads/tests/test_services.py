@@ -91,10 +91,23 @@ class LeadServicesTestCase(TestCase):
             LeadWorkflowService.assign_salesperson(self.lead_unassigned, self.sales_inactive)
 
     def test_workflow_convert_valid_path(self):
-        """Verify successful lead conversion workflow."""
+        """Verify successful lead conversion workflow sets timestamp and spawns Contact."""
+        from contacts.models import Contact
+        contact_count_before = Contact.objects.count()
+        
         lead = LeadWorkflowService.convert_lead(self.lead_a)
         self.assertEqual(lead.status, Lead.LeadStatus.CONVERTED)
         self.assertTrue(lead.is_converted)
+        self.assertIsNotNone(lead.converted_at)
+
+        # Assert contact was created matching lead fields
+        self.assertEqual(Contact.objects.count(), contact_count_before + 1)
+        contact = Contact.objects.latest('id')
+        self.assertEqual(contact.full_name, lead.full_name)
+        self.assertEqual(contact.company_name, lead.company_name)
+        self.assertEqual(contact.phone_number, lead.phone)
+        self.assertEqual(contact.email, lead.email)
+        self.assertEqual(contact.assigned_salesperson, lead.assigned_salesperson)
 
     def test_workflow_convert_unassigned_lead_fails(self):
         """Verify that converting an unassigned lead raises a ValidationError."""
@@ -140,8 +153,36 @@ class LeadServicesTestCase(TestCase):
         with self.assertRaises(ValidationError):
             LeadWorkflowService.mark_lead_lost(self.lead_a, Lead.LostReason.NOT_INTERESTED, "Too late")
 
+    def test_workflow_assign_status_transition(self):
+        """Verify lead salesperson assignment transitions status from NEW to ASSIGNED."""
+        self.assertEqual(self.lead_unassigned.status, Lead.LeadStatus.NEW)
+        LeadWorkflowService.assign_salesperson(self.lead_unassigned, self.sales_a)
+        self.lead_unassigned.refresh_from_db()
+        self.assertEqual(self.lead_unassigned.status, Lead.LeadStatus.ASSIGNED)
+
+    def test_workflow_contacted_action_success(self):
+        """Verify user explicitly transitioning lead to CONTACTED."""
+        LeadWorkflowService.assign_salesperson(self.lead_unassigned, self.sales_a)
+        self.assertEqual(self.lead_unassigned.status, Lead.LeadStatus.ASSIGNED)
+        
+        LeadWorkflowService.mark_contacted(self.lead_unassigned)
+        self.lead_unassigned.refresh_from_db()
+        self.assertEqual(self.lead_unassigned.status, Lead.LeadStatus.CONTACTED)
+
+    def test_workflow_contacted_action_fails_if_lost_or_converted(self):
+        """Verify contacted transition fails on converted/lost leads."""
+        # Converted fails
+        LeadWorkflowService.convert_lead(self.lead_a)
+        with self.assertRaises(ValidationError):
+            LeadWorkflowService.mark_contacted(self.lead_a)
+
+        # Lost fails
+        LeadWorkflowService.mark_lead_lost(self.lead_b, Lead.LostReason.NO_RESPONSE, "")
+        with self.assertRaises(ValidationError):
+            LeadWorkflowService.mark_contacted(self.lead_b)
+
     def test_database_rollback_on_failed_workflow_action(self):
-        """Verify that failed workflow operations rollback database changes entirely (transaction.atomic)."""
+        """Verify failed workflow operations rollback database changes entirely."""
         lead = Lead.objects.create(
             full_name="Rollback Test",
             phone="+99999",
@@ -159,3 +200,24 @@ class LeadServicesTestCase(TestCase):
         refetched = Lead.objects.get(pk=lead.pk)
         self.assertEqual(refetched.status, Lead.LeadStatus.NEW)
         self.assertFalse(refetched.is_converted)
+
+    def test_database_rollback_on_contact_creation_failure(self):
+        """Verify that conversion rolls back lead status if Contact creation fails."""
+        from contacts.models import Contact
+        lead = Lead.objects.create(
+            full_name="Rollback Contact Test",
+            phone="+999992",
+            company_name="Contact Failure Inc",
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a
+        )
+
+        with patch.object(Contact.objects, 'create', side_effect=IntegrityError("Mock Contact Integrity Error")):
+            with self.assertRaises(IntegrityError):
+                LeadWorkflowService.convert_lead(lead)
+
+        # Refetch lead and verify it is NOT converted and status remains NEW
+        refetched = Lead.objects.get(pk=lead.pk)
+        self.assertEqual(refetched.status, Lead.LeadStatus.NEW)
+        self.assertFalse(refetched.is_converted)
+        self.assertIsNone(refetched.converted_at)

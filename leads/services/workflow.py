@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from leads.models import Lead
 
@@ -29,6 +30,13 @@ class LeadWorkflowManager:
         if lead.is_converted:
             raise ValidationError("Cannot mark a converted lead as Lost.")
 
+    @classmethod
+    def validate_mark_contacted(cls, lead: Lead):
+        if lead.is_converted:
+            raise ValidationError("Cannot mark a converted lead as Contacted.")
+        if lead.status == Lead.LeadStatus.LOST:
+            raise ValidationError("Cannot mark a lost lead as Contacted.")
+
 
 class LeadWorkflowService:
     """
@@ -41,16 +49,31 @@ class LeadWorkflowService:
     def assign_salesperson(lead: Lead, salesperson) -> Lead:
         LeadWorkflowManager.validate_assign(lead, salesperson)
         lead.assigned_salesperson = salesperson
+        if lead.status == Lead.LeadStatus.NEW:
+            lead.status = Lead.LeadStatus.ASSIGNED
         lead.save()
         return lead
 
     @staticmethod
     @transaction.atomic
     def convert_lead(lead: Lead) -> Lead:
+        from contacts.models import Contact
+        
         LeadWorkflowManager.validate_convert(lead)
         lead.status = Lead.LeadStatus.CONVERTED
         lead.is_converted = True
+        lead.converted_at = timezone.now()
         lead.save()
+
+        # Create corresponding Contact inside the same transaction
+        Contact.objects.create(
+            full_name=lead.full_name,
+            company_name=lead.company_name,
+            phone_number=lead.phone or '',
+            email=lead.email,
+            assigned_salesperson=lead.assigned_salesperson,
+            notes=lead.notes
+        )
         return lead
 
     @staticmethod
@@ -62,3 +85,12 @@ class LeadWorkflowService:
         lead.lost_notes = lost_notes or ""
         lead.save()
         return lead
+
+    @staticmethod
+    @transaction.atomic
+    def mark_contacted(lead: Lead) -> Lead:
+        LeadWorkflowManager.validate_mark_contacted(lead)
+        lead.status = Lead.LeadStatus.CONTACTED
+        lead.save()
+        return lead
+
