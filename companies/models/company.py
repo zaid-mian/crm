@@ -57,7 +57,7 @@ class Company(models.Model):
     annual_revenue = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     employee_count = models.IntegerField(null=True, blank=True)
     lead_source = models.CharField(max_length=50, blank=True, default='')
-    website = models.URLField(blank=True, default='')
+    website = models.URLField(blank=True, default='', db_index=True)
     phone = models.CharField(max_length=20, blank=True, default='')
     billing_address = models.CharField(max_length=255, blank=True, default='')
     shipping_address = models.CharField(max_length=255, blank=True, default='')

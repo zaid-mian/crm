@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Company API Testing Workspace</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <a href="index.html" class="navbar-brand mb-0 h1 d-flex align-items-center">
+                <span class="text-primary me-2 font-weight-bold">&laquo;</span>
+                <span class="small font-weight-medium">AdaptCRM Companies Tester</span>
+            </a>
+            <span class="navbar-text text-muted small">
+                Connected Base: <span id="connectedBaseDisplay" class="font-monospace text-light">http://localhost:8000</span>
+            </span>
+        </div>
+    </nav>
+
+    <!-- App alert notifications container -->
+    <div class="container-fluid px-4 mt-3" id="mainAlertContainer"></div>
+
+    <div class="container-fluid px-4 my-4">
+        <div class="row g-4">
+            
+            <!-- Left Workspace Panel (70%): CRM Dashboard Emulator -->
+            <div class="col-lg-8 col-xl-9">
+                
+                <!-- Company Statistics Cards Row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-secondary text-uppercase font-weight-medium small mb-1">Total Companies</small>
+                            <h3 class="mb-0 text-dark font-weight-bold" id="statTotal">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-primary text-uppercase font-weight-medium small mb-1">Prospects</small>
+                            <h3 class="mb-0 text-primary font-weight-bold" id="statProspects">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-success text-uppercase font-weight-medium small mb-1">Customers</small>
+                            <h3 class="mb-0 text-success font-weight-bold" id="statCustomers">-</h3>
+                        </div>
+                    </div>
+                    <div class="col-md col-sm-6">
+                        <div class="card bg-white shadow-sm border-0 p-3 h-100">
+                            <small class="text-info text-uppercase font-weight-medium small mb-1">Partners</small>
+                            <h3 class="mb-0 text-info font-weight-bold" id="statPartners">-</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters Toolbar Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body py-3">
+                        <div class="row g-3 align-items-center">
+                            <!-- Search -->
+                            <div class="col-md-3 col-sm-6">
+                                <input type="text" class="form-control form-control-sm" id="searchBox" placeholder="Search by name, email, website, code...">
+                            </div>
+                            <!-- Type Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterType">
+                                    <option value="">All Types</option>
+                                    <option value="PROSPECT">Prospect</option>
+                                    <option value="CUSTOMER">Customer</option>
+                                    <option value="PARTNER">Partner</option>
+                                    <option value="COMPETITOR">Competitor</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <!-- Rating Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterRating">
+                                    <option value="">All Ratings</option>
+                                    <option value="NONE">None</option>
+                                    <option value="HOT">Hot</option>
+                                    <option value="WARM">Warm</option>
+                                    <option value="COLD">Cold</option>
+                                </select>
+                            </div>
+                            <!-- Industry Filter -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterIndustry">
+                                    <option value="">All Industries</option>
+                                    <option value="TECHNOLOGY">Technology</option>
+                                    <option value="FINANCE">Finance</option>
+                                    <option value="HEALTHCARE">Healthcare</option>
+                                    <option value="EDUCATION">Education</option>
+                                    <option value="RETAIL">Retail</option>
+                                    <option value="MANUFACTURING">Manufacturing</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <!-- Assigned Salesperson -->
+                            <div class="col-md col-sm-6">
+                                <select class="form-select form-select-sm" id="filterOwner">
+                                    <option value="">All Owners</option>
+                                    <option value="1">admin</option>
+                                    <option value="2">manager</option>
+                                    <option value="3">salesperson1</option>
+                                    <option value="4">salesperson2</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Companies List Table Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="companyTable">
+                                <thead class="table-light text-uppercase small" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                    <tr>
+                                        <th scope="col" style="padding-left: 1.5rem;" data-ordering="id">Code</th>
+                                        <th scope="col" data-ordering="name">Company Name</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Rating</th>
+                                        <th scope="col">Industry</th>
+                                        <th scope="col">Phone</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Owner</th>
+                                        <th scope="col" style="padding-right: 1.5rem;" class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4 text-secondary">
+                                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                            Loading companies from database...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Table Pagination Footer -->
+                    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <div class="small text-secondary" id="paginationDisplay">Showing 0 of 0 companies.</div>
+                        <nav aria-label="Companies page navigation">
+                            <ul class="pagination pagination-sm mb-0 gap-1" id="paginationNav">
+                                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                                <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Company Details Card / Profile Emulator -->
+                <div class="card shadow-sm border-0 d-none" id="companyProfileCard">
+                    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-dark font-weight-semibold" id="profileCodeDisplay">Company Profile</h5>
+                        <button type="button" class="btn-close" id="closeProfileBtn" aria-label="Close Profile"></button>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="row g-4">
+                            <!-- Left: Profile Details -->
+                            <div class="col-md-5">
+                                <div class="bg-light rounded p-3 mb-3">
+                                    <h4 class="text-primary font-weight-bold mb-1" id="profileName">-</h4>
+                                    <p class="text-muted small mb-3" id="profileTypeIndustry">-</p>
+                                    
+                                    <div class="mb-2"><strong>Code:</strong> <span id="profileCode" class="font-monospace">-</span></div>
+                                    <div class="mb-2"><strong>Rating:</strong> <span id="profileRating" class="badge bg-secondary">-</span></div>
+                                    <div class="mb-2"><strong>Email:</strong> <span id="profileEmail">-</span></div>
+                                    <div class="mb-2"><strong>Phone:</strong> <span id="profilePhone">-</span></div>
+                                    <div class="mb-2"><strong>Website:</strong> <a href="#" target="_blank" id="profileWebsite">-</a></div>
+                                    <div class="mb-2"><strong>Employees:</strong> <span id="profileEmployees">-</span></div>
+                                    <div class="mb-2"><strong>Annual Revenue:</strong> <span id="profileRevenue">-</span></div>
+                                    <div class="mb-2"><strong>Owner:</strong> <span id="profileOwner">-</span></div>
+                                    <div class="mb-2"><strong>Lead Source:</strong> <span id="profileSource">-</span></div>
+                                    <div class="mb-0"><strong>Description:</strong><p class="text-secondary small mb-0 mt-1" id="profileDescription">-</p></div>
+                                </div>
+                            </div>
+                            <!-- Right: Nested Contacts & Opportunities -->
+                            <div class="col-md-7">
+                                <!-- Summary cards -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <div class="border rounded p-2 text-center bg-white">
+                                            <div class="text-secondary small">Total Contacts</div>
+                                            <h4 class="font-weight-bold mb-0 text-dark" id="summaryContacts">0</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="border rounded p-2 text-center bg-white">
+                                            <div class="text-secondary small">Won / Open Deals</div>
+                                            <h4 class="font-weight-bold mb-0 text-success" id="summaryDeals">0 / 0</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="border rounded p-2 text-center bg-white">
+                                            <div class="text-secondary small">Total Won Revenue</div>
+                                            <h4 class="font-weight-bold mb-0 text-success" id="summaryRevenue">$0.00</h4>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tabs for Related Tables -->
+                                <h6 class="font-weight-semibold text-muted mb-2 text-uppercase small">Related Contacts</h6>
+                                <div class="table-responsive mb-3 border rounded bg-white">
+                                    <table class="table table-sm table-hover align-middle mb-0" id="profileContactsTable" style="font-size: 0.8rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Designation</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="4" class="text-center py-2 text-muted">No contacts linked.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6 class="font-weight-semibold text-muted mb-2 text-uppercase small">Related Opportunities</h6>
+                                <div class="table-responsive border rounded bg-white">
+                                    <table class="table table-sm table-hover align-middle mb-0" id="profileOpportunitiesTable" style="font-size: 0.8rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Deal Name</th>
+                                                <th>Stage</th>
+                                                <th>Value</th>
+                                                <th>Close Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="4" class="text-center py-2 text-muted">No opportunities linked.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Sidebar Panel (30%): Form Workspace and Console -->
+            <div class="col-lg-4 col-xl-3">
+                
+                <!-- Create/Edit Form Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 text-dark font-weight-semibold" id="formTitle">Create New Company</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="companyForm">
+                            <input type="hidden" id="companyId">
+                            
+                            <div class="mb-3">
+                                <label for="companyName" class="form-label font-weight-medium">Company Name *</label>
+                                <input type="text" class="form-control" id="companyName" required placeholder="Acme Inc">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="companyEmail" class="form-label font-weight-medium">Company Email</label>
+                                <input type="email" class="form-control" id="companyEmail" placeholder="info@acme.com">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="companyPhone" class="form-label font-weight-medium">Company Phone</label>
+                                <input type="text" class="form-control" id="companyPhone" placeholder="+1 (555) 0199">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="companyWebsite" class="form-label font-weight-medium">Website URL</label>
+                                <input type="url" class="form-control" id="companyWebsite" placeholder="https://acme.com">
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label for="companyType" class="form-label font-weight-medium">Type</label>
+                                    <select class="form-select" id="companyType">
+                                        <option value="PROSPECT">Prospect</option>
+                                        <option value="CUSTOMER">Customer</option>
+                                        <option value="PARTNER">Partner</option>
+                                        <option value="COMPETITOR">Competitor</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <label for="companyRating" class="form-label font-weight-medium">Rating</label>
+                                    <select class="form-select" id="companyRating">
+                                        <option value="NONE">None</option>
+                                        <option value="HOT">Hot</option>
+                                        <option value="WARM">Warm</option>
+                                        <option value="COLD">Cold</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="companyIndustry" class="form-label font-weight-medium">Industry</label>
+                                <select class="form-select" id="companyIndustry">
+                                    <option value="OTHER">Other</option>
+                                    <option value="TECHNOLOGY">Technology</option>
+                                    <option value="FINANCE">Finance</option>
+                                    <option value="HEALTHCARE">Healthcare</option>
+                                    <option value="EDUCATION">Education</option>
+                                    <option value="RETAIL">Retail</option>
+                                    <option value="MANUFACTURING">Manufacturing</option>
+                                </select>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <label for="companyRevenue" class="form-label font-weight-medium">Annual Revenue</label>
+                                    <input type="number" step="0.01" class="form-control" id="companyRevenue" placeholder="500000">
+                                </div>
+                                <div class="col">
+                                    <label for="companyEmployees" class="form-label font-weight-medium">Employees</label>
+                                    <input type="number" class="form-control" id="companyEmployees" placeholder="50">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="companyOwner" class="form-label font-weight-medium">Assign Owner (ID)</label>
+                                <input type="number" class="form-control" id="companyOwner" placeholder="3">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="companyDescription" class="form-label font-weight-medium">Description</label>
+                                <textarea class="form-control" id="companyDescription" rows="2" placeholder="Organization details..."></textarea>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1" id="saveBtn">Create Company</button>
+                                <button type="button" class="btn btn-light" id="cancelBtn" style="display: none;">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- API Developer HTTP Request / Response Debug Panel -->
+                <div class="card bg-dark text-light border-0 shadow-sm font-monospace" style="font-size: 0.75rem;">
+                    <div class="card-header bg-black py-2 d-flex justify-content-between align-items-center">
+                        <span class="text-secondary">HTTP Debug Log</span>
+                        <button class="btn btn-outline-secondary btn-xs p-1 py-0 text-uppercase" id="clearConsoleBtn" style="font-size: 0.6rem;">Clear</button>
+                    </div>
+                    <div class="card-body p-2" id="consoleOutput" style="max-height: 250px; overflow-y: auto;">
+                        <div class="text-secondary">[Console initialized, awaiting actions...]</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Central REST HTTP Agent logic -->
+    <script src="js/api.js"></script>
+    <!-- Central Shared Logic -->
+    <script src="js/utils.js"></script>
+    <!-- Page Controller Logic -->
+    <script src="js/companies.js"></script>
+</body>
+</html>

@@ -30,13 +30,10 @@ class CompanyListSerializer(serializers.ModelSerializer):
             'type',
             'rating',
             'industry',
-            'website',
-            'phone',
             'email',
-            'assigned_salesperson',
+            'phone',
             'assigned_salesperson_name',
-            'created_at',
-            'updated_at'
+            'created_at'
         ]
 
 
