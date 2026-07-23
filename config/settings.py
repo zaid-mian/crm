@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'leads',
     'contacts',
     'opportunities',
+    'companies',
     'corsheaders',
 ]
 
