@@ -89,6 +89,27 @@ class Lead(models.Model):
     # Conversion Flag
     is_converted = models.BooleanField(default=False, db_index=True)
     converted_at = models.DateTimeField(null=True, blank=True)
+    converted_company = models.ForeignKey(
+        'companies.Company',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='converted_leads'
+    )
+    converted_contact = models.ForeignKey(
+        'contacts.Contact',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='converted_leads'
+    )
+    converted_opportunity = models.ForeignKey(
+        'opportunities.Opportunity',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='converted_leads'
+    )
 
     # Lost Details
     lost_reason = models.CharField(

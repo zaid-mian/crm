@@ -221,3 +221,102 @@ class LeadServicesTestCase(TestCase):
         self.assertEqual(refetched.status, Lead.LeadStatus.NEW)
         self.assertFalse(refetched.is_converted)
         self.assertIsNone(refetched.converted_at)
+
+    def test_workflow_convert_company_creation_and_merge(self):
+        """Verify converting lead creates Company & Contact and merges fields on reuse."""
+        from companies.models import Company
+        from contacts.models import Contact
+
+        # First conversion: creates company and contact
+        lead_1 = Lead.objects.create(
+            full_name="Lead One",
+            phone="+999111",
+            email="lead1@example.com",
+            company_name="Acme Corporation",
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a,
+            source=Lead.LeadSource.WEBSITE,
+            notes="Initial notes"
+        )
+        LeadWorkflowService.convert_lead(lead_1)
+        lead_1.refresh_from_db()
+
+        self.assertIsNotNone(lead_1.converted_company)
+        self.assertIsNotNone(lead_1.converted_contact)
+        self.assertIsNotNone(lead_1.converted_opportunity)
+
+        comp = lead_1.converted_company
+        self.assertEqual(comp.name, "Acme Corporation")
+        self.assertEqual(comp.phone, "+999111")
+        self.assertEqual(comp.email, "lead1@example.com")
+        self.assertEqual(comp.lead_source, Lead.LeadSource.WEBSITE)
+        self.assertEqual(comp.description, "Initial notes")
+
+        # Second conversion: same company name, should reuse the company and merge blank fields
+        lead_2 = Lead.objects.create(
+            full_name="Lead Two",
+            phone="+999222",  # different phone but company already has a phone, should NOT overwrite
+            email="",         # empty email on lead, company has email, should NOT overwrite
+            company_name="Acme Corporation",
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a,
+            source=Lead.LeadSource.OTHER,
+            notes=""
+        )
+        
+        # Pre-verify company has website empty
+        self.assertEqual(comp.website, "")
+        
+        # Let's populate something else on lead_2 that is empty on company
+        lead_2.notes = "Secondary details"
+        lead_2.save()
+
+        # Let's mock a field update on company to ensure it doesn't overwrite
+        comp.website = "https://acme.org"
+        comp.save()
+
+        LeadWorkflowService.convert_lead(lead_2)
+        lead_2.refresh_from_db()
+
+        # Re-fetch company
+        comp.refresh_from_db()
+        self.assertEqual(lead_2.converted_company, comp) # Reused!
+        self.assertEqual(comp.website, "https://acme.org") # Preserved!
+        self.assertEqual(comp.phone, "+999111") # Preserved first lead phone, not overwritten by "+999222"!
+
+    def test_workflow_convert_contact_deduplication(self):
+        """Verify converting lead with same email for the same company reuses Contact."""
+        from contacts.models import Contact
+
+        # First lead
+        lead_1 = Lead.objects.create(
+            full_name="John Doe",
+            phone="+555001",
+            email="johndoe@example.com",
+            company_name="Dunder Mifflin",
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a
+        )
+        LeadWorkflowService.convert_lead(lead_1)
+        lead_1.refresh_from_db()
+
+        contact_1 = lead_1.converted_contact
+
+        # Second lead: same email, same company
+        lead_2 = Lead.objects.create(
+            full_name="John Doe Duplicate",
+            phone="+555002",
+            email="johndoe@example.com",
+            company_name="Dunder Mifflin",
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a
+        )
+        LeadWorkflowService.convert_lead(lead_2)
+        lead_2.refresh_from_db()
+
+        contact_2 = lead_2.converted_contact
+
+        # Must reuse the contact object
+        self.assertEqual(contact_1, contact_2)
+        self.assertEqual(contact_1.phone_number, "+555001") # Not overwritten by "+555002"
+

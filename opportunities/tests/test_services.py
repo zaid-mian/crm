@@ -125,4 +125,5 @@ class OpportunityServicesTestCase(TestCase):
         self.assertEqual(opp.assigned_salesperson, self.salesperson1)
         self.assertEqual(opp.stage, OpportunityStage.QUALIFICATION)
         self.assertEqual(opp.amount, Decimal('0.00'))
-        self.assertEqual(opp.expected_close_date, date.today() + timedelta(days=30))
+        from django.utils import timezone
+        self.assertEqual(opp.expected_close_date, timezone.now().date() + timedelta(days=30))

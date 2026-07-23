@@ -60,27 +60,86 @@ class LeadWorkflowService:
         from datetime import timedelta
         from contacts.models import Contact
         from opportunities.models import Opportunity
+        from companies.models import Company
         
         LeadWorkflowManager.validate_convert(lead)
-        lead.status = Lead.LeadStatus.CONVERTED
-        lead.is_converted = True
-        lead.converted_at = timezone.now()
-        lead.save()
 
-        # Create corresponding Contact inside the same transaction
-        contact = Contact.objects.create(
-            full_name=lead.full_name,
-            company_name=lead.company_name,
-            phone_number=lead.phone or '',
-            email=lead.email,
-            assigned_salesperson=lead.assigned_salesperson,
-            notes=lead.notes
-        )
+        # 1. Find Company by name__iexact
+        c_name = lead.company_name.strip()
+        company = Company.objects.filter(name__iexact=c_name).first()
 
-        # Create corresponding Opportunity inside the same transaction
-        Opportunity.objects.create(
-            name=f"{lead.company_name} - Initial Opportunity",
-            company_name=lead.company_name,
+        if company:
+            # Merge blank Company fields only
+            company_updated = False
+            if not company.phone and lead.phone:
+                company.phone = lead.phone
+                company_updated = True
+            if not company.email and lead.email:
+                company.email = lead.email
+                company_updated = True
+            if not company.lead_source and lead.source:
+                company.lead_source = lead.source
+                company_updated = True
+            if not company.description and lead.notes:
+                company.description = lead.notes
+                company_updated = True
+            if company_updated:
+                company.save()
+        else:
+            # Create Company
+            company = Company.objects.create(
+                name=c_name,
+                phone=lead.phone or '',
+                email=lead.email,
+                lead_source=lead.source or '',
+                description=lead.notes or '',
+                assigned_salesperson=lead.assigned_salesperson
+            )
+
+        # 2. Find Contact by company + email__iexact or phone number fallback
+        contact = None
+        if lead.email:
+            contact = Contact.objects.filter(
+                company=company,
+                email__iexact=lead.email,
+                is_deleted=False
+            ).first()
+        elif lead.phone:
+            contact = Contact.objects.filter(
+                company=company,
+                phone_number=lead.phone,
+                is_deleted=False
+            ).first()
+
+        if contact:
+            # Merge blank Contact fields only
+            contact_updated = False
+            if not contact.notes and lead.notes:
+                contact.notes = lead.notes
+                contact_updated = True
+            if not contact.email and lead.email:
+                contact.email = lead.email
+                contact_updated = True
+            if not contact.phone_number and lead.phone:
+                contact.phone_number = lead.phone
+                contact_updated = True
+            if contact_updated:
+                contact.save()
+        else:
+            # Create Contact
+            contact = Contact.objects.create(
+                full_name=lead.full_name,
+                company=company,
+                phone_number=lead.phone or '',
+                email=lead.email,
+                assigned_salesperson=lead.assigned_salesperson,
+                notes=lead.notes
+            )
+
+        # 3. Create Opportunity
+        opp = Opportunity.objects.create(
+            name=f"{company.name} - Initial Opportunity",
+            company=company,
             source_lead=lead,
             primary_contact=contact,
             assigned_salesperson=lead.assigned_salesperson,
@@ -88,6 +147,16 @@ class LeadWorkflowService:
             expected_close_date=timezone.now().date() + timedelta(days=30),
             description=lead.notes or ""
         )
+
+        # 4. Link trace-back ForeignKeys on Lead
+        lead.status = Lead.LeadStatus.CONVERTED
+        lead.is_converted = True
+        lead.converted_at = timezone.now()
+        lead.converted_company = company
+        lead.converted_contact = contact
+        lead.converted_opportunity = opp
+        lead.save()
+
         return lead
 
     @staticmethod
