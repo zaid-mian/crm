@@ -364,7 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 companyProfileCard.scrollIntoView({ behavior: 'smooth' });
             }
         } catch (error) {
-            window.UIUtils.showAlert('mainAlertContainer', parseAPIError(error), 'danger');
+            const msg = error.status === 404 ? "Company record not found." : parseAPIError(error);
+            window.UIUtils.showAlert('mainAlertContainer', msg, 'danger');
         }
     }
 
@@ -498,4 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Execution ---
     loadCompanies();
+
+    // Check for deep link to details
+    const urlParams = new URLSearchParams(window.location.search);
+    const companyId = urlParams.get('id');
+    if (companyId) {
+        loadCompanyDetails(companyId);
+    }
 });

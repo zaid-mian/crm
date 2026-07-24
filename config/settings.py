@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'contacts',
     'opportunities',
     'companies',
+    'pipeline',
     'corsheaders',
 ]
 

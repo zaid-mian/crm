@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/', include('contacts.urls')),
     path('api/', include('opportunities.urls')),
     path('api/', include('companies.urls')),
+    path('api/', include('pipeline.urls')),
 ]

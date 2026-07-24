@@ -230,9 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 viewContactDrawer.show();
+            } else {
+                const msg = response.status === 404 ? "Contact record not found." : (data.message || "Failed to load contact details.");
+                window.UIUtils.showAlert('mainAlertContainer', msg, 'danger');
             }
         } catch (err) {
             console.error(err);
+            window.UIUtils.showAlert('mainAlertContainer', err.message || 'Error loading contact details.', 'danger');
         }
     }
 
@@ -354,4 +358,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadUsers();
     loadContacts();
+
+    // Check for deep link to details
+    const urlParams = new URLSearchParams(window.location.search);
+    const contactId = urlParams.get('id');
+    if (contactId) {
+        openViewDrawer(contactId);
+    }
 });

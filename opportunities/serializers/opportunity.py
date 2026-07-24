@@ -47,6 +47,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             'id',
             'opportunity_code',
             'name',
+            'company',
             'company_name',
             'source_lead',
             'primary_contact',
@@ -84,6 +85,7 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
             'id',
             'opportunity_code',
             'name',
+            'company',
             'company_name',
             'source_lead',
             'primary_contact',
@@ -102,6 +104,7 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'opportunity_code',
+            'company',
             'company_name',
             'source_lead',
             'primary_contact',
