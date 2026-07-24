@@ -69,10 +69,11 @@ class APIClient {
 
             if (!response.ok) {
                 // If it is a standardized error wrapper, parse message
-                const msg = (responseBody && responseBody.message) || `HTTP error ${response.status}`;
+                const msg = (responseBody && (responseBody.message || responseBody.detail)) || `HTTP error ${response.status}`;
                 const err = new Error(msg);
                 err.status = response.status;
                 err.errors = responseBody && responseBody.errors;
+                err.detail = responseBody && responseBody.detail;
                 throw err;
             }
 

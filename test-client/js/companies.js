@@ -49,62 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- REST Helper Agent ---
     const RESTClient = {
         async request(method, path, body = null) {
-            const baseUrl = localStorage.getItem('apiBaseUrl') || 'http://localhost:8000';
-            const url = `${baseUrl}${path}`;
-            
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-
-            // Retrieve authentication header values
-            const authMethod = localStorage.getItem('authMethod') || 'basic';
-            if (authMethod === 'token') {
-                const token = localStorage.getItem('authToken');
-                if (token) headers['Authorization'] = token;
-            } else if (authMethod === 'basic') {
-                const username = localStorage.getItem('authUsername');
-                const password = localStorage.getItem('authPassword');
-                if (username && password) {
-                    headers['Authorization'] = 'Basic ' + btoa(username + ':' + password);
-                }
-            }
-
-            const options = {
-                method,
-                headers
-            };
-            if (body) {
-                options.body = JSON.stringify(body);
-            }
-
-            try {
-                const response = await fetch(url, options);
-                let responseData = {};
-                const text = await response.text();
-                if (text) {
-                    try {
-                        responseData = JSON.parse(text);
-                    } catch (e) {
-                        responseData = { detail: text };
-                    }
-                }
-                
-                logToConsole(method, path, body, response.status, responseData);
-                
-                if (!response.ok) {
-                    // Extract fields if validation failed
-                    throw responseData;
-                }
-                return responseData;
-            } catch (error) {
-                if (error && typeof error === 'object' && !error.status) {
-                    // Inject status code if fetch level failed
-                    error.status = 500;
-                }
-                throw error;
-            }
+            return window.APIClient.request(method, path, body);
         }
     };
+
+    // Listen to global API logs to populate the console output
+    window.addEventListener('crm-api-log', (event) => {
+        const { method, url, requestBody, status, responseBody } = event.detail;
+        let path = url;
+        const baseUrl = window.APIClient.getBaseUrl();
+        if (url.startsWith(baseUrl)) {
+            path = url.substring(baseUrl.length);
+        }
+        logToConsole(method, path, requestBody, status, responseBody);
+    });
 
     // --- Formatting Helpers ---
     const formatCurrency = (val) => {
