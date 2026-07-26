@@ -51,4 +51,13 @@ class OpportunityWorkflowService:
 
         opportunity.stage = new_stage
         opportunity.save()
+
+        if new_stage == OpportunityStage.CLOSED_WON:
+            from payments.services.invoice import PaymentInvoiceService
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            try:
+                PaymentInvoiceService.generate_from_opportunity(opportunity, user=user)
+            except DRFValidationError:
+                pass
+
         return opportunity

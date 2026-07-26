@@ -25,13 +25,12 @@ SECRET_KEY = 'django-insecure-x4luy*y04-n51@=8f*!#0!weu0@k7iptlk+6_o5k6lzmxsb(&_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -43,6 +42,9 @@ INSTALLED_APPS = [
     'opportunities',
     'companies',
     'pipeline',
+    'payments',
+    'crm',
+    'django_filters',
     'corsheaders',
 ]
 
@@ -62,7 +64,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'payments' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -126,6 +128,10 @@ STATIC_URL = 'static/'
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'leads.utils.exceptions.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
 }
 
 CORS_ALLOW_ALL_ORIGINS = True

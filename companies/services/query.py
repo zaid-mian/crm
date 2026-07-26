@@ -15,5 +15,8 @@ class CompanyQueryService:
         
         if user.is_superuser or getattr(user, 'is_staff', False):
             return queryset
+
+        if not user or not user.is_authenticated:
+            return queryset
             
         return queryset.filter(assigned_salesperson=user)

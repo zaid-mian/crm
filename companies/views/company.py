@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, mixins, filters
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from django.db.models import ProtectedError
@@ -47,7 +47,6 @@ class CompanyViewSet(viewsets.ModelViewSet):
     CompanyViewSet coordinating CRUD, query scoping, and delete protection.
     """
     queryset = Company.objects.all()
-    permission_classes = [IsAuthenticated, IsCompanyOwnerOrManager]
     pagination_class = CompanyPagination
     filter_backends = [DjangoFilterBackend, CompanySearchFilter, filters.OrderingFilter]
     filterset_class = CompanyFilter
@@ -62,6 +61,11 @@ class CompanyViewSet(viewsets.ModelViewSet):
         'retrieve': CompanyDetailSerializer,
         'list': CompanyListSerializer,
     }
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated(), IsCompanyOwnerOrManager()]
 
     def get_queryset(self):
         qs = super().get_queryset()

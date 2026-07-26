@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AdaptCRM{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'crm/css/board.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="crm-app">
+<div class="crm-shell">
+    <main class="crm-main">
+        <div id="mainAlertContainer"></div>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script>window.CRM_CAN_MODIFY = {{ can_modify_payments|yesno:"true,false" }};</script>
+<script src="{% static 'crm/js/api.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

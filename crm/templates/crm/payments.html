@@ -1,0 +1,150 @@
+{% extends 'crm/base.html' %}
+{% load static %}
+
+{% block title %}Payments — AdaptCRM{% endblock %}
+{% block nav_payments_active %}active{% endblock %}
+
+{% block content %}
+<header class="crm-page-header">
+    <div>
+        <h1>Payments</h1>
+        <p class="crm-muted">Invoices and installments after opportunities are won</p>
+    </div>
+    {% if can_modify_payments %}
+    <button type="button" class="crm-btn crm-btn-primary" id="openRecordBtn">+ Record Payment</button>
+    {% endif %}
+</header>
+
+<section class="crm-toolbar">
+    <input type="search" id="searchBox" class="crm-input" placeholder="Search invoice, company, opportunity…">
+    <select id="filterStatus" class="crm-select">
+        <option value="">Payment Status</option>
+        <option value="UNPAID">Unpaid</option>
+        <option value="PARTIALLY_PAID">Partially Paid</option>
+        <option value="PAID">Paid</option>
+    </select>
+    <select id="filterMethod" class="crm-select">
+        <option value="">Payment Method</option>
+        <option value="CASH">Cash</option>
+        <option value="BANK_TRANSFER">Bank Transfer</option>
+        <option value="CREDIT_CARD">Credit Card</option>
+        <option value="OTHER">Other</option>
+    </select>
+    <select id="filterCompany" class="crm-select">
+        <option value="">Company</option>
+    </select>
+    <input type="date" id="filterDateFrom" class="crm-input crm-input-date" aria-label="Date from">
+    <input type="date" id="filterDateTo" class="crm-input crm-input-date" aria-label="Date to">
+    <select id="filterSalesperson" class="crm-select">
+        <option value="">Salesperson</option>
+    </select>
+</section>
+
+<section class="crm-panel">
+    <div id="loadingState" class="crm-state d-none">Loading Payments…</div>
+    <div id="emptyState" class="crm-state d-none">
+        <h2>No Payment Records Found</h2>
+        <p>Payments will appear after an opportunity is won.</p>
+    </div>
+    <div class="crm-table-wrap">
+        <table class="crm-table" id="paymentsTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Invoice No</th>
+                    <th>Company</th>
+                    <th>Opportunity</th>
+                    <th>Total Amount</th>
+                    <th>Paid Amount</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                    <th>Payment Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <footer class="crm-table-footer">
+        <span id="paginationDisplay">Page 1</span>
+        <div id="paginationNav" class="crm-pagination"></div>
+    </footer>
+</section>
+
+<div class="crm-drawer-backdrop" id="drawerBackdrop" hidden></div>
+<aside class="crm-drawer" id="paymentDrawer" aria-hidden="true">
+    <div class="crm-drawer-head">
+        <h2 id="drawerTitle">Record Payment</h2>
+        <button type="button" class="crm-drawer-close" id="closeDrawerBtn" aria-label="Close">&times;</button>
+    </div>
+    <div class="crm-drawer-body">
+        <form id="paymentForm">
+            <input type="hidden" id="paymentId">
+            <input type="hidden" id="formMode" value="create">
+
+            <div id="companyFieldGroup" class="crm-field">
+                <label for="formCompany">Company *</label>
+                <select id="formCompany" required></select>
+            </div>
+            <div id="opportunityFieldGroup" class="crm-field">
+                <label for="formOpportunity">Opportunity *</label>
+                <select id="formOpportunity" required></select>
+            </div>
+            <div class="crm-field">
+                <label for="formInvoice">Invoice Number</label>
+                <input type="text" id="formInvoice" readonly placeholder="AUTO GENERATED">
+            </div>
+            <div id="totalAmountGroup" class="crm-field">
+                <label for="formTotalAmount">Total Amount *</label>
+                <input type="number" step="0.01" min="0" id="formTotalAmount">
+            </div>
+            <div id="amountReceivedGroup" class="crm-field">
+                <label for="formAmountReceived">Amount Received *</label>
+                <input type="number" step="0.01" min="0" id="formAmountReceived">
+            </div>
+            <div id="methodGroup" class="crm-field">
+                <label for="formMethod">Payment Method *</label>
+                <select id="formMethod">
+                    <option value="CASH">Cash</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CREDIT_CARD">Credit Card</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div id="referenceGroup" class="crm-field">
+                <label for="formReference">Transaction Reference</label>
+                <input type="text" id="formReference">
+            </div>
+            <div id="dateGroup" class="crm-field">
+                <label for="formDate">Payment Date *</label>
+                <input type="date" id="formDate">
+            </div>
+            <div class="crm-field">
+                <label for="formNotes">Notes</label>
+                <textarea id="formNotes" rows="3"></textarea>
+            </div>
+            <div class="crm-drawer-actions">
+                <button type="button" class="crm-btn crm-btn-ghost" id="cancelDrawerBtn">Cancel</button>
+                <button type="submit" class="crm-btn crm-btn-primary" id="savePaymentBtn">Save</button>
+            </div>
+        </form>
+
+        <div id="viewPanel" class="d-none">
+            <h3 class="crm-section-title">Basic Information</h3>
+            <dl class="crm-dl" id="viewDetails"></dl>
+            <hr>
+            <h3 class="crm-section-title">Payment History</h3>
+            <ul class="crm-history" id="viewHistory"></ul>
+            <div class="crm-drawer-actions crm-drawer-actions-stack">
+                <button type="button" class="crm-btn crm-btn-outline" id="recordAnotherBtn">Record Another Payment</button>
+                <button type="button" class="crm-btn crm-btn-outline" id="viewDownloadInvoice">Download Invoice</button>
+                <button type="button" class="crm-btn crm-btn-outline" id="viewPrintReceipt">Print Receipt</button>
+            </div>
+        </div>
+    </div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'crm/js/payments.js' %}"></script>
+{% endblock %}

@@ -42,7 +42,6 @@
                             <select class="form-select form-select-sm" id="authMethod">
                                 <option value="basic" selected>Basic Auth</option>
                                 <option value="token">Token Header</option>
-                                <option value="session">Session Cookies</option>
                             </select>
                         </div>
                         <div id="tokenGroup" class="mb-3">
@@ -58,11 +57,6 @@
                             <div>
                                 <label for="authPassword" class="form-label font-weight-medium">Password</label>
                                 <input type="password" class="form-control" id="authPassword" placeholder="••••••••">
-                            </div>
-                        </div>
-                        <div id="sessionGroup" class="mb-3 d-none">
-                            <div class="alert alert-info py-2 small" role="alert">
-                                Log in to the <a href="http://localhost:8000/admin/" target="_blank" class="alert-link">Django Admin</a> console in this browser first to fetch session cookies.
                             </div>
                         </div>
                         <button id="saveConfigBtn" class="btn btn-primary w-100 py-2">Save Configuration</button>

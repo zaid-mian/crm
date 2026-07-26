@@ -41,11 +41,6 @@ class APIClient {
             headers: headers
         };
         
-        const authMethod = localStorage.getItem('auth_method') || 'token';
-        if (authMethod === 'session') {
-            config.credentials = 'include';
-        }
-
         if (body) {
             config.body = JSON.stringify(body);
         }

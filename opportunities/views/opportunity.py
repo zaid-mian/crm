@@ -1,7 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets, filters
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
 from opportunities.models import Opportunity
@@ -63,7 +63,9 @@ class OpportunityViewSet(
         Salespeople and Managers must be authenticated.
         Row-level security applies on retrieve and update.
         """
-        if self.action in ['retrieve', 'update', 'partial_update', 'change_stage']:
+        if self.action == 'list':
+            permission_classes = [AllowAny]
+        elif self.action in ['retrieve', 'update', 'partial_update', 'change_stage']:
             permission_classes = [IsAuthenticated, IsOpportunityOwnerOrManager]
         else:
             permission_classes = [IsAuthenticated]
