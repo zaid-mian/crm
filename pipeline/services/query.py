@@ -25,17 +25,21 @@ def map_stage_to_enum(pipeline_stage, default_val):
 
 class PipelineQueryService:
     @staticmethod
-    def get_pipeline_cards(user):
+    def get_pipeline_cards(user, pipeline_id=None):
         """
         Retrieves and normalizes unconverted Leads and all Opportunities
         visible to the requesting user based on role-based scoping (RBAC).
         """
         # 1. Fetch active unconverted leads
         leads_qs = Lead.objects.filter(is_converted=False).select_related('pipeline_stage', 'assigned_salesperson')
+        if pipeline_id:
+            leads_qs = leads_qs.filter(pipeline_id=pipeline_id)
         leads_qs = LeadQueryService.get_visible_leads(user, base_queryset=leads_qs)
         
         # 2. Fetch visible opportunities
         opps_qs = OpportunityQueryService.get_visible_opportunities(user).select_related('company', 'pipeline_stage', 'primary_contact', 'assigned_salesperson')
+        if pipeline_id:
+            opps_qs = opps_qs.filter(pipeline_id=pipeline_id)
         
         cards = []
         

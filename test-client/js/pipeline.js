@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activePipelineId = null;
     let activeStages = [];
+    let allPipelines = [];
     const sortables = [];
 
     // Shared list of CRM users/salespersons to populate select dropdowns
@@ -172,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderLeadForm(lead, cardEl) {
-        // Filter active pipeline stages compatible with Leads
         const compatibleStages = activeStages.filter(s => s.entity_type === 'LEAD' || s.stage_type === 'CONVERSION' || s.stage_type === 'LOST');
 
         drawerContent.innerHTML = `
@@ -219,6 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label for="edit_pipeline" class="form-label font-weight-medium">Pipeline</label>
+                    <select class="form-select" id="edit_pipeline">
+                        ${allPipelines.map(p => `<option value="${p.id}" ${lead.pipeline === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="edit_lead_stage" class="form-label font-weight-medium">Pipeline Stage</label>
                     <select class="form-select" id="edit_lead_stage">
                         ${compatibleStages.map(s => `<option value="${s.id}" ${lead.pipeline_stage === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
@@ -242,12 +248,36 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
         `;
 
+        const pipelineInput = document.getElementById('edit_pipeline');
+        const stageInput = document.getElementById('edit_lead_stage');
+        if (pipelineInput && stageInput) {
+            pipelineInput.addEventListener('change', async () => {
+                const targetPipelineId = parseInt(pipelineInput.value);
+                try {
+                    const stagesRes = await APIClient.get(`/api/pipeline/stages/?pipeline=${targetPipelineId}`);
+                    let stages = [];
+                    if (Array.isArray(stagesRes)) {
+                        stages = stagesRes;
+                    } else if (stagesRes && stagesRes.hasOwnProperty('success')) {
+                        stages = stagesRes.data || [];
+                    }
+                    stages.sort((a, b) => a.order - b.order);
+                    
+                    const compStages = stages.filter(s => s.entity_type === 'LEAD' || s.stage_type === 'CONVERSION' || s.stage_type === 'LOST');
+                    stageInput.innerHTML = compStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                } catch (e) {
+                    console.error("Failed to load stages for target pipeline:", e);
+                }
+            });
+        }
+
         document.getElementById('drawerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const saveBtn = document.getElementById('saveDrawerBtn');
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
 
+            const newPipelineId = parseInt(document.getElementById('edit_pipeline').value);
             const newStageId = parseInt(document.getElementById('edit_lead_stage').value);
             const salespersonVal = document.getElementById('edit_assigned_salesperson').value;
             const newSalesperson = salespersonVal ? parseInt(salespersonVal) : null;
@@ -260,6 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 source: document.getElementById('edit_source').value,
                 priority: document.getElementById('edit_priority').value,
                 notes: document.getElementById('edit_notes').value.trim(),
+                pipeline: newPipelineId,
+                pipeline_stage: newStageId,
             };
 
             try {
@@ -268,14 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (newSalesperson !== lead.assigned_salesperson) {
                         await APIClient.post(`/api/leads/${lead.id}/assign/`, {
                             assigned_salesperson: newSalesperson
-                        });
-                    }
-
-                    if (newStageId !== lead.pipeline_stage) {
-                        await APIClient.post('/api/pipeline/move/', {
-                            entity_type: 'lead',
-                            id: lead.id,
-                            target_stage_id: newStageId
                         });
                     }
 
@@ -332,6 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="form-text text-muted small">Calculated dynamically based on column stage.</div>
                 </div>
                 <div class="mb-3">
+                    <label for="edit_opp_pipeline" class="form-label font-weight-medium">Pipeline</label>
+                    <select class="form-select" id="edit_opp_pipeline">
+                        ${allPipelines.map(p => `<option value="${p.id}" ${opp.pipeline === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="edit_opp_stage_select" class="form-label font-weight-medium">Stage</label>
                     <select class="form-select" id="edit_opp_stage_select">
                         ${compatibleStages.map(s => `<option value="${s.id}" data-type="${s.stage_type}" ${opp.pipeline_stage === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
@@ -361,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
         `;
 
+        const pipelineInput = document.getElementById('edit_opp_pipeline');
         const stageSelect = document.getElementById('edit_opp_stage_select');
         const lostReasonGroup = document.getElementById('lostReasonGroup');
         
@@ -374,6 +405,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        if (pipelineInput && stageSelect) {
+            pipelineInput.addEventListener('change', async () => {
+                const targetPipelineId = parseInt(pipelineInput.value);
+                try {
+                    const stagesRes = await APIClient.get(`/api/pipeline/stages/?pipeline=${targetPipelineId}`);
+                    let stages = [];
+                    if (Array.isArray(stagesRes)) {
+                        stages = stagesRes;
+                    } else if (stagesRes && stagesRes.hasOwnProperty('success')) {
+                        stages = stagesRes.data || [];
+                    }
+                    stages.sort((a, b) => a.order - b.order);
+                    
+                    const compStages = stages.filter(s => s.entity_type === 'OPPORTUNITY' || s.stage_type === 'CONVERSION');
+                    stageSelect.innerHTML = compStages.map(s => `<option value="${s.id}" data-type="${s.stage_type}">${s.name}</option>`).join('');
+                    toggleLostReason();
+                } catch (e) {
+                    console.error("Failed to load stages for target pipeline:", e);
+                }
+            });
+        }
+        
         stageSelect.addEventListener('change', toggleLostReason);
         toggleLostReason(); // trigger on initial draw
 
@@ -383,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
 
+            const newPipelineId = parseInt(document.getElementById('edit_opp_pipeline').value);
             const newStageId = parseInt(stageSelect.value);
             const selectedOpt = stageSelect.options[stageSelect.selectedIndex];
             const stageType = selectedOpt ? selectedOpt.dataset.type : '';
@@ -393,20 +447,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 expected_close_date: document.getElementById('edit_opp_close_date').value || null,
                 lost_reason: stageType === 'LOST' ? document.getElementById('edit_opp_lost_reason').value.trim() : '',
                 assigned_salesperson: document.getElementById('edit_opp_salesperson').value ? parseInt(document.getElementById('edit_opp_salesperson').value) : null,
-                description: document.getElementById('edit_opp_description').value.trim()
+                description: document.getElementById('edit_opp_description').value.trim(),
+                pipeline: newPipelineId,
+                pipeline_stage: newStageId,
             };
 
             try {
                 const updateRes = await APIClient.put(`/api/opportunities/${opp.id}/`, payload);
                 if (updateRes) {
-                    if (newStageId !== opp.pipeline_stage) {
-                        await APIClient.post('/api/pipeline/move/', {
-                            entity_type: 'opportunity',
-                            id: opp.id,
-                            target_stage_id: newStageId
-                        });
-                    }
-
                     UIUtils.showAlert('mainAlertContainer', 'Opportunity details updated successfully.');
                     bsDrawer.hide();
                     loadPipeline();
@@ -443,6 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pipelines = [];
             }
             
+            allPipelines = pipelines;
             console.log("Pipelines loaded", pipelines);
             
             if (pipelineSelect) {

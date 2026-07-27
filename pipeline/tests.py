@@ -379,3 +379,100 @@ class PipelineViewSetTestCase(APITestCase):
         self.lead_b.refresh_from_db()
         self.assertEqual(self.lead_a.pipeline_stage, self.stage_contacted)
         self.assertEqual(self.lead_b.pipeline_stage, self.stage_contacted)
+
+    def test_lead_creation_auto_pipeline_and_stage(self):
+        """Verify Lead creation automatically assigns default pipeline and its first Lead stage."""
+        pipeline = self.stage_new.pipeline
+        pipeline.is_default = True
+        pipeline.save()
+        
+        self.client.force_authenticate(user=self.sales_a)
+        url = reverse('leads:lead-list')
+        payload = {
+            "full_name": "New Test Lead",
+            "company_name": "Test Company",
+            "phone": "+99998888",
+            "email": "newtestlead@example.com",
+            "source": "WEBSITE",
+            "priority": "HIGH"
+        }
+        response = self.client.post(url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify default pipeline and stage are set
+        lead_id = response.data["data"]["id"]
+        lead = Lead.objects.get(pk=lead_id)
+        self.assertIsNotNone(lead.pipeline)
+        self.assertEqual(lead.pipeline.is_default, True)
+        self.assertEqual(lead.pipeline_stage.stage_type, 'NORMAL_LEAD')
+        self.assertEqual(lead.pipeline_stage.order, 0)
+
+    def test_pipeline_switching_resets_stage(self):
+        """Verify switching a Lead/Opportunity to another pipeline resets its stage to the first compatible stage of target pipeline."""
+        from pipeline.models import Pipeline, PipelineStage
+        self.client.force_authenticate(user=self.admin)
+        
+        # Create second pipeline and its stages
+        pipeline_b = Pipeline.objects.create(name="Pipeline B", is_default=False)
+        stage_b_1 = PipelineStage.objects.create(
+            pipeline=pipeline_b,
+            name="Draft",
+            entity_type='LEAD',
+            order=0,
+            stage_type='NORMAL_LEAD'
+        )
+        stage_b_2 = PipelineStage.objects.create(
+            pipeline=pipeline_b,
+            name="Converted Opp",
+            entity_type='OPPORTUNITY',
+            order=1,
+            stage_type='NORMAL_OPPORTUNITY'
+        )
+        
+        # 1. Switch Lead to Pipeline B
+        lead_url = reverse('leads:lead-detail', args=[self.lead_a.id])
+        payload = {
+            "pipeline": pipeline_b.id
+        }
+        response = self.client.patch(lead_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.lead_a.refresh_from_db()
+        self.assertEqual(self.lead_a.pipeline, pipeline_b)
+        self.assertEqual(self.lead_a.pipeline_stage, stage_b_1) # reset to first compatible stage
+
+        # 2. Switch Opportunity to Pipeline B
+        opp_url = reverse('opportunities:opportunity-detail', args=[self.opp.id])
+        payload_opp = {
+            "pipeline": pipeline_b.id
+        }
+        response = self.client.patch(opp_url, data=payload_opp)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.opp.refresh_from_db()
+        self.assertEqual(self.opp.pipeline, pipeline_b)
+        self.assertEqual(self.opp.pipeline_stage, stage_b_2) # reset to first compatible opportunity stage
+        
+    def test_pipeline_move_stage_pipeline_mismatch(self):
+        """Verify moving a card to a stage belonging to a different pipeline is blocked."""
+        from pipeline.models import Pipeline, PipelineStage
+        self.client.force_authenticate(user=self.admin)
+        
+        pipeline_b = Pipeline.objects.create(name="Pipeline B", is_default=False)
+        stage_b_1 = PipelineStage.objects.create(
+            pipeline=pipeline_b,
+            name="Draft",
+            entity_type='LEAD',
+            order=0,
+            stage_type='NORMAL_LEAD'
+        )
+        
+        # Try to move lead_a (currently on default pipeline) to stage_b_1 (on Pipeline B)
+        payload = {
+            "entity_type": "lead",
+            "id": self.lead_a.id,
+            "target_stage_id": stage_b_1.id
+        }
+        response = self.client.post(self.move_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Target stage does not belong to the lead's active pipeline.", response.data["message"])

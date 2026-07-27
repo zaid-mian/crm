@@ -17,7 +17,16 @@ class PipelineViewSet(viewsets.ViewSet):
         GET /api/pipeline/
         Returns unconverted Leads and all Opportunities unified under a single list.
         """
-        cards = PipelineQueryService.get_pipeline_cards(request.user)
+        pipeline_id = request.query_params.get('pipeline')
+        if not pipeline_id:
+            from pipeline.models import Pipeline
+            default_pipeline = Pipeline.objects.filter(is_default=True).first()
+            if not default_pipeline:
+                default_pipeline = Pipeline.objects.first()
+            if default_pipeline:
+                pipeline_id = default_pipeline.id
+                
+        cards = PipelineQueryService.get_pipeline_cards(request.user, pipeline_id=pipeline_id)
         serializer = PipelineCardSerializer(cards, many=True)
         return api_success(
             data=serializer.data,
@@ -112,6 +121,13 @@ class PipelineViewSet(viewsets.ViewSet):
                     message="Closed leads are locked and cannot be modified by salespeople.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
+            
+            # Rule: Pipeline mismatch check
+            if lead.pipeline and target_stage.pipeline != lead.pipeline:
+                return api_error(
+                    message="Target stage does not belong to the lead's active pipeline.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
             if lead.is_converted:
                 return api_error(
                     message="Converted leads are read-only and cannot be modified.",
@@ -147,6 +163,7 @@ class PipelineViewSet(viewsets.ViewSet):
                         opportunity = converted_lead.converted_opportunity
                         
                         opportunity.pipeline_stage = target_stage
+                        opportunity.pipeline = lead.pipeline
                         opportunity.stage = 'QUALIFICATION'
                         opportunity.save()
                         
@@ -241,6 +258,13 @@ class PipelineViewSet(viewsets.ViewSet):
             if (is_current_terminal or opp.stage in ['CLOSED_WON', 'CLOSED_LOST']) and not is_manager_or_admin(request.user):
                 return api_error(
                     message="Closed opportunities are locked and cannot be modified by salespeople.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Rule: Pipeline mismatch check
+            if opp.pipeline and target_stage.pipeline != opp.pipeline:
+                return api_error(
+                    message="Target stage does not belong to the opportunity's active pipeline.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
 

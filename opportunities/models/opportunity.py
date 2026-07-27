@@ -53,6 +53,13 @@ class Opportunity(models.Model):
         default=OpportunityStage.QUALIFICATION,
         db_index=True
     )
+    pipeline = models.ForeignKey(
+        'pipeline.Pipeline',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='opportunities'
+    )
     pipeline_stage = models.ForeignKey(
         'pipeline.PipelineStage',
         on_delete=models.SET_NULL,
@@ -118,6 +125,8 @@ class Opportunity(models.Model):
         return (self.amount * Decimal(self.probability)) / 100
 
     def save(self, *args, **kwargs):
+        if self.pipeline_stage and not self.pipeline:
+            self.pipeline = self.pipeline_stage.pipeline
         if not hasattr(self, 'company') or self.company is None:
             from companies.models import Company
             company, _ = Company.objects.get_or_create(

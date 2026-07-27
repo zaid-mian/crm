@@ -70,6 +70,13 @@ class Lead(models.Model):
         default=LeadStatus.NEW,
         db_index=True
     )
+    pipeline = models.ForeignKey(
+        'pipeline.Pipeline',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='leads'
+    )
     pipeline_stage = models.ForeignKey(
         'pipeline.PipelineStage',
         on_delete=models.SET_NULL,
@@ -164,3 +171,8 @@ class Lead(models.Model):
                 raise ValidationError(
                     "Lost reason and lost notes can only be set when status is 'Lost'."
                 )
+
+    def save(self, *args, **kwargs):
+        if self.pipeline_stage and not self.pipeline:
+            self.pipeline = self.pipeline_stage.pipeline
+        super().save(*args, **kwargs)
