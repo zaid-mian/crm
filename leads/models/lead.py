@@ -70,6 +70,13 @@ class Lead(models.Model):
         default=LeadStatus.NEW,
         db_index=True
     )
+    pipeline_stage = models.ForeignKey(
+        'pipeline.PipelineStage',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='leads'
+    )
 
     # Assignment
     assigned_salesperson = models.ForeignKey(

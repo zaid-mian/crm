@@ -1,3 +1,42 @@
 from django.db import models
 
-# Create your models here.
+class Pipeline(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class PipelineStage(models.Model):
+    ENTITY_TYPE_CHOICES = [
+        ('LEAD', 'Lead'),
+        ('OPPORTUNITY', 'Opportunity'),
+    ]
+    
+    STAGE_TYPE_CHOICES = [
+        ('NORMAL_LEAD', 'Normal Lead'),
+        ('CONVERSION', 'Conversion Stage'),
+        ('NORMAL_OPPORTUNITY', 'Normal Opportunity'),
+        ('WON', 'Won Stage'),
+        ('LOST', 'Lost Stage'),
+    ]
+
+    pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='stages')
+    name = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPE_CHOICES)
+    order = models.PositiveIntegerField(default=0)
+    color = models.CharField(max_length=7, default='#6c757d') # Hex code color support
+    stage_type = models.CharField(max_length=30, choices=STAGE_TYPE_CHOICES, default='NORMAL_LEAD')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(fields=['pipeline', 'order'], name='unique_stage_order_per_pipeline')
+        ]
+
+    def __str__(self):
+        return f"{self.pipeline.name} - {self.name} ({self.entity_type})"

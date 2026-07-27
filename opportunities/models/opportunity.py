@@ -53,6 +53,13 @@ class Opportunity(models.Model):
         default=OpportunityStage.QUALIFICATION,
         db_index=True
     )
+    pipeline_stage = models.ForeignKey(
+        'pipeline.PipelineStage',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='opportunities'
+    )
     
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     expected_close_date = models.DateField()
