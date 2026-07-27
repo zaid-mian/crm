@@ -16,8 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stageForm = document.getElementById('stageForm');
     const stageIdInput = document.getElementById('stageId');
     const stageNameInput = document.getElementById('stageNameInput');
-    const stageEntityTypeInput = document.getElementById('stageEntityTypeInput');
-    const stageTypeInput = document.getElementById('stageTypeInput');
     const stageOrderInput = document.getElementById('stageOrderInput');
     const stageColorPicker = document.getElementById('stageColorPicker');
     const stageColorInput = document.getElementById('stageColorInput');
@@ -207,14 +205,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 stagesTableBody.innerHTML = '';
+                
+                function getBehaviorLabel(stage_type) {
+                    const mapping = {
+                        'NORMAL_LEAD': 'Lead Stage',
+                        'CONVERSION': 'Conversion Stage',
+                        'NORMAL_OPPORTUNITY': 'Opportunity Stage',
+                        'WON': 'Won Stage',
+                        'LOST': 'Lost Stage'
+                    };
+                    return mapping[stage_type] || stage_type;
+                }
+
                 stages.forEach(stage => {
                     const tr = document.createElement('tr');
                     tr.className = 'stage-row';
                     tr.innerHTML = `
                         <td class="font-monospace fw-bold">${stage.order}</td>
                         <td class="fw-semibold">${stage.name}</td>
-                        <td><span class="badge bg-secondary text-uppercase">${stage.entity_type}</span></td>
-                        <td><span class="badge bg-info bg-opacity-10 text-info text-capitalize">${stage.stage_type.replace('_', ' ')}</span></td>
+                        <td><span class="badge bg-info bg-opacity-10 text-info">${getBehaviorLabel(stage.stage_type)}</span></td>
                         <td>
                             <span class="color-preview" style="background-color: ${stage.color || '#6c757d'};"></span>
                             <span class="small font-monospace ms-2 text-muted">${stage.color || '#6c757d'}</span>
@@ -312,8 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
             stageDrawerTitle.textContent = "Edit Stage Settings";
             stageIdInput.value = stage.id;
             stageNameInput.value = stage.name;
-            stageEntityTypeInput.value = stage.entity_type;
-            stageTypeInput.value = stage.stage_type;
+            
+            const behaviorRadio = document.querySelector(`input[name="stageBehavior"][value="${stage.stage_type}"]`);
+            if (behaviorRadio) {
+                behaviorRadio.checked = true;
+            }
+            
             stageOrderInput.value = stage.order;
             stageColorInput.value = stage.color || "#6c757d";
             stageColorPicker.value = stage.color || "#6c757d";
@@ -321,8 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
             stageDrawerTitle.textContent = "Create Stage Settings";
             stageIdInput.value = "";
             stageNameInput.value = "";
-            stageEntityTypeInput.value = "LEAD";
-            stageTypeInput.value = "NORMAL_LEAD";
+            
+            const behaviorRadio = document.getElementById("behaviorLead");
+            if (behaviorRadio) {
+                behaviorRadio.checked = true;
+            }
+            
             stageOrderInput.value = "0";
             stageColorInput.value = "#6c757d";
             stageColorPicker.value = "#6c757d";
@@ -341,11 +358,22 @@ document.addEventListener('DOMContentLoaded', () => {
             saveStageBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
 
             const id = stageIdInput.value;
+            const selectedBehavior = document.querySelector('input[name="stageBehavior"]:checked').value;
+            
+            let entityType, stageType;
+            if (selectedBehavior === 'NORMAL_LEAD') {
+                entityType = 'LEAD';
+                stageType = 'NORMAL_LEAD';
+            } else {
+                entityType = 'OPPORTUNITY';
+                stageType = selectedBehavior;
+            }
+
             const payload = {
                 pipeline: activePipelineId,
                 name: stageNameInput.value.trim(),
-                entity_type: stageEntityTypeInput.value,
-                stage_type: stageTypeInput.value,
+                entity_type: entityType,
+                stage_type: stageType,
                 order: parseInt(stageOrderInput.value),
                 color: stageColorInput.value
             };

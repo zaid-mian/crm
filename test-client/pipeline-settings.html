@@ -86,8 +86,7 @@
                                 <tr>
                                     <th style="width: 80px;">Order</th>
                                     <th>Stage Name</th>
-                                    <th>Entity Type</th>
-                                    <th>Stage Type</th>
+                                    <th>Behavior</th>
                                     <th>Color</th>
                                     <th class="text-end" style="width: 150px;">Actions</th>
                                 </tr>
@@ -148,21 +147,51 @@
                     <input type="text" class="form-control" id="stageNameInput" required placeholder="e.g. Qualified">
                 </div>
                 <div class="mb-3">
-                    <label for="stageEntityTypeInput" class="form-label font-weight-medium">Entity Type</label>
-                    <select class="form-select" id="stageEntityTypeInput" required>
-                        <option value="LEAD">Lead</option>
-                        <option value="OPPORTUNITY">Opportunity</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="stageTypeInput" class="form-label font-weight-medium">Stage Type</label>
-                    <select class="form-select" id="stageTypeInput" required>
-                        <option value="NORMAL_LEAD">Normal Lead</option>
-                        <option value="CONVERSION">Lead -> Opportunity Conversion</option>
-                        <option value="NORMAL_OPPORTUNITY">Normal Opportunity</option>
-                        <option value="WON">Closed Won</option>
-                        <option value="LOST">Closed Lost</option>
-                    </select>
+                    <label class="form-label font-weight-medium">Stage Behavior</label>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorLead" value="NORMAL_LEAD" checked>
+                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorLead">
+                            Lead Stage
+                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Normal stage while the customer is still a lead.</div>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorConversion" value="CONVERSION">
+                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorConversion">
+                            Conversion Stage
+                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">When a card enters this stage it automatically becomes an Opportunity.</div>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorOpportunity" value="NORMAL_OPPORTUNITY">
+                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorOpportunity">
+                            Opportunity Stage
+                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Normal stage after conversion.</div>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorWon" value="WON">
+                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorWon">
+                            Won Stage
+                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Final successful stage.</div>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorLost" value="LOST">
+                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorLost">
+                            Lost Stage
+                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Final unsuccessful stage.</div>
+                        </label>
+                    </div>
+
+                    <div class="form-text text-muted small mt-2">
+                        Cards stay as Leads until they enter the Conversion Stage. After that, they automatically become Opportunities.
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="stageOrderInput" class="form-label font-weight-medium">Sort Order</label>
