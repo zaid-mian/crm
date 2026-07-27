@@ -34,14 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let deletingStageId = null;
 
     // Sync color inputs
-    stageColorPicker.addEventListener('input', () => {
-        stageColorInput.value = stageColorPicker.value;
-    });
-    stageColorInput.addEventListener('input', () => {
-        if (/^#[0-9A-F]{6}$/i.test(stageColorInput.value)) {
-            stageColorPicker.value = stageColorInput.value;
-        }
-    });
+    if (stageColorPicker && stageColorInput) {
+        stageColorPicker.addEventListener('input', () => {
+            stageColorInput.value = stageColorPicker.value;
+        });
+        stageColorInput.addEventListener('input', () => {
+            if (/^#[0-9A-F]{6}$/i.test(stageColorInput.value)) {
+                stageColorPicker.value = stageColorInput.value;
+            }
+        });
+    }
 
     // --- Developer Log Panel Listener ---
     window.addEventListener('crm-api-log', (event) => {
@@ -69,13 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.add('active');
         });
 
-        if (logList.querySelector('.text-center')) {
+        if (logList && logList.querySelector('.text-center')) {
             logList.innerHTML = '';
         }
-        logList.insertBefore(item, logList.firstChild);
-
-        while (logList.children.length > 50) {
-            logList.removeChild(logList.lastChild);
+        if (logList) {
+            logList.insertBefore(item, logList.firstChild);
+            while (logList.children.length > 50) {
+                logList.removeChild(logList.lastChild);
+            }
         }
 
         renderRequestDetails(log);
@@ -83,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderRequestDetails(log) {
+        if (!detailViewer) return;
         detailViewer.innerHTML = `
             <div class="mb-2">
                 <strong class="small text-muted text-uppercase">Request Endpoint:</strong>
@@ -112,13 +116,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Load Pipelines list ---
     async function loadPipelines(selectedId = null) {
         try {
+            console.log("Calling GET /api/pipelines/ in settings...");
             const response = await APIClient.get('/api/pipelines/');
-            if (response.success) {
+            console.log("Response received in settings:", response);
+            
+            // Normalize wrapped/unwrapped response format
+            let pipelines = [];
+            if (Array.isArray(response)) {
+                pipelines = response;
+            } else if (response && response.hasOwnProperty('success')) {
+                pipelines = response.data || [];
+            } else if (response && response.results) {
+                pipelines = response.results;
+            } else {
+                console.error("Unknown pipelines response in settings:", response);
+                pipelines = [];
+            }
+
+            if (pipelineSelector) {
                 pipelineSelector.innerHTML = '';
-                const pipelines = response.data;
                 if (pipelines.length === 0) {
                     pipelineSelector.innerHTML = '<option value="">No pipelines configured</option>';
-                    stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Please create a pipeline first.</td></tr>';
+                    if (stagesTableBody) {
+                        stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Please create a pipeline first.</td></tr>';
+                    }
                     activePipelineId = null;
                     return;
                 }
@@ -137,29 +158,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 activePipelineId = parseInt(pipelineSelector.value);
-                loadStages(activePipelineId);
+                await loadStages(activePipelineId);
             }
         } catch (e) {
+            console.error("Failed to load pipelines in settings:", e);
             UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to load pipelines.', 'danger');
         }
     }
 
-    pipelineSelector.addEventListener('change', () => {
-        activePipelineId = parseInt(pipelineSelector.value);
-        loadStages(activePipelineId);
-    });
+    if (pipelineSelector) {
+        pipelineSelector.addEventListener('change', () => {
+            activePipelineId = parseInt(pipelineSelector.value);
+            loadStages(activePipelineId);
+        });
+    }
 
     // --- Load Stages of Active Pipeline ---
     async function loadStages(pipelineId) {
         if (!pipelineId) return;
-        stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading stages...</td></tr>';
+        if (stagesTableBody) {
+            stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading stages...</td></tr>';
+        }
         
         try {
+            console.log(`Calling GET /api/pipeline/stages/?pipeline=${pipelineId} in settings...`);
             const response = await APIClient.get(`/api/pipeline/stages/?pipeline=${pipelineId}`);
-            if (response.success) {
-                const stages = response.data;
-                stages.sort((a, b) => a.order - b.order);
+            console.log("Response received from stages list:", response);
+            
+            // Normalize wrapped/unwrapped stages response
+            let stages = [];
+            if (Array.isArray(response)) {
+                stages = response;
+            } else if (response && response.hasOwnProperty('success')) {
+                stages = response.data || [];
+            } else if (response && response.results) {
+                stages = response.results;
+            } else {
+                console.error("Unknown stages response format in settings:", response);
+                stages = [];
+            }
+            
+            stages.sort((a, b) => a.order - b.order);
 
+            if (stagesTableBody) {
                 if (stages.length === 0) {
                     stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No stages configured in this pipeline. Click Add New Stage to begin.</td></tr>';
                     return;
@@ -203,56 +244,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } catch (e) {
-            stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load stages config.</td></tr>';
+            console.error("Failed to load stages in settings:", e);
+            if (stagesTableBody) {
+                stagesTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load stages config.</td></tr>';
+            }
         }
     }
 
     // --- Pipeline Actions (Create, Rename, Delete) ---
-    createPipelineBtn.addEventListener('click', async () => {
-        const name = prompt("Enter new pipeline name:");
-        if (!name || !name.trim()) return;
+    if (createPipelineBtn) {
+        createPipelineBtn.addEventListener('click', async () => {
+            const name = prompt("Enter new pipeline name:");
+            if (!name || !name.trim()) return;
 
-        try {
-            const res = await APIClient.post('/api/pipelines/', { name: name.trim() });
-            if (res.id) {
-                UIUtils.showAlert('mainAlertContainer', 'Pipeline created successfully.');
-                loadPipelines(res.id);
+            try {
+                const res = await APIClient.post('/api/pipelines/', { name: name.trim() });
+                if (res) {
+                    const newId = res.id || (res.data && res.data.id);
+                    UIUtils.showAlert('mainAlertContainer', 'Pipeline created successfully.');
+                    await loadPipelines(newId);
+                }
+            } catch (e) {
+                UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to create pipeline.', 'danger');
             }
-        } catch (e) {
-            UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to create pipeline.', 'danger');
-        }
-    });
+        });
+    }
 
-    renamePipelineBtn.addEventListener('click', async () => {
-        if (!activePipelineId) return;
-        const currentName = pipelineSelector.options[pipelineSelector.selectedIndex].text;
-        const name = prompt("Rename pipeline to:", currentName);
-        if (!name || !name.trim() || name.trim() === currentName) return;
+    if (renamePipelineBtn) {
+        renamePipelineBtn.addEventListener('click', async () => {
+            if (!activePipelineId) return;
+            const currentName = pipelineSelector.options[pipelineSelector.selectedIndex].text;
+            const name = prompt("Rename pipeline to:", currentName);
+            if (!name || !name.trim() || name.trim() === currentName) return;
 
-        try {
-            const res = await APIClient.patch(`/api/pipelines/${activePipelineId}/`, { name: name.trim() });
-            if (res.id) {
-                UIUtils.showAlert('mainAlertContainer', 'Pipeline renamed successfully.');
-                loadPipelines(res.id);
+            try {
+                const res = await APIClient.patch(`/api/pipelines/${activePipelineId}/`, { name: name.trim() });
+                if (res) {
+                    const newId = res.id || (res.data && res.data.id);
+                    UIUtils.showAlert('mainAlertContainer', 'Pipeline renamed successfully.');
+                    await loadPipelines(newId);
+                }
+            } catch (e) {
+                UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to rename pipeline.', 'danger');
             }
-        } catch (e) {
-            UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to rename pipeline.', 'danger');
-        }
-    });
+        });
+    }
 
-    deletePipelineBtn.addEventListener('click', async () => {
-        if (!activePipelineId) return;
-        const currentName = pipelineSelector.options[pipelineSelector.selectedIndex].text;
-        if (!confirm(`Are you absolutely sure you want to delete pipeline "${currentName}"?`)) return;
+    if (deletePipelineBtn) {
+        deletePipelineBtn.addEventListener('click', async () => {
+            if (!activePipelineId) return;
+            const currentName = pipelineSelector.options[pipelineSelector.selectedIndex].text;
+            if (!confirm(`Are you absolutely sure you want to delete pipeline "${currentName}"?`)) return;
 
-        try {
-            await APIClient.delete(`/api/pipelines/${activePipelineId}/`);
-            UIUtils.showAlert('mainAlertContainer', 'Pipeline deleted successfully.');
-            loadPipelines();
-        } catch (e) {
-            UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to delete pipeline.', 'danger');
-        }
-    });
+            try {
+                await APIClient.delete(`/api/pipelines/${activePipelineId}/`);
+                UIUtils.showAlert('mainAlertContainer', 'Pipeline deleted successfully.');
+                await loadPipelines();
+            } catch (e) {
+                UIUtils.showAlert('mainAlertContainer', e.message || 'Failed to delete pipeline.', 'danger');
+            }
+        });
+    }
 
     // --- Stage CRUD Actions ---
     function openStageDrawer(stage = null) {
@@ -278,43 +330,47 @@ document.addEventListener('DOMContentLoaded', () => {
         bsStageDrawer.show();
     }
 
-    addStageBtn.addEventListener('click', () => openStageDrawer());
+    if (addStageBtn) {
+        addStageBtn.addEventListener('click', () => openStageDrawer());
+    }
 
-    stageForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        saveStageBtn.disabled = true;
-        saveStageBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+    if (stageForm) {
+        stageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            saveStageBtn.disabled = true;
+            saveStageBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
 
-        const id = stageIdInput.value;
-        const payload = {
-            pipeline: activePipelineId,
-            name: stageNameInput.value.trim(),
-            entity_type: stageEntityTypeInput.value,
-            stage_type: stageTypeInput.value,
-            order: parseInt(stageOrderInput.value),
-            color: stageColorInput.value
-        };
+            const id = stageIdInput.value;
+            const payload = {
+                pipeline: activePipelineId,
+                name: stageNameInput.value.trim(),
+                entity_type: stageEntityTypeInput.value,
+                stage_type: stageTypeInput.value,
+                order: parseInt(stageOrderInput.value),
+                color: stageColorInput.value
+            };
 
-        try {
-            let res;
-            if (id) {
-                res = await APIClient.put(`/api/pipeline/stages/${id}/`, payload);
-            } else {
-                res = await APIClient.post('/api/pipeline/stages/', payload);
+            try {
+                let res;
+                if (id) {
+                    res = await APIClient.put(`/api/pipeline/stages/${id}/`, payload);
+                } else {
+                    res = await APIClient.post('/api/pipeline/stages/', payload);
+                }
+
+                if (res) {
+                    UIUtils.showAlert('mainAlertContainer', 'Stage configuration saved successfully.');
+                    bsStageDrawer.hide();
+                    await loadStages(activePipelineId);
+                }
+            } catch (err) {
+                UIUtils.showAlert('mainAlertContainer', err.message || 'Error occurred while saving stage.', 'danger');
+            } finally {
+                saveStageBtn.disabled = false;
+                saveStageBtn.textContent = 'Save Stage';
             }
-
-            if (res.id) {
-                UIUtils.showAlert('mainAlertContainer', 'Stage configuration saved successfully.');
-                bsStageDrawer.hide();
-                loadStages(activePipelineId);
-            }
-        } catch (err) {
-            UIUtils.showAlert('mainAlertContainer', err.message || 'Error occurred while saving stage.', 'danger');
-        } finally {
-            saveStageBtn.disabled = false;
-            saveStageBtn.textContent = 'Save Stage';
-        }
-    });
+        });
+    }
 
     // --- Deletion Flow with Reassignment logic ---
     async function handleDeleteStage(stageId) {
@@ -323,20 +379,29 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // First check if deletion succeeds or demands reassignment (via DELETE attempt)
             const checkRes = await APIClient.delete(`/api/pipeline/stages/${stageId}/`);
-            if (checkRes.success) {
+            if (checkRes) {
                 UIUtils.showAlert('mainAlertContainer', 'Stage deleted successfully.');
-                loadStages(activePipelineId);
+                await loadStages(activePipelineId);
             }
         } catch (e) {
             // Check if backend returned active cards deletion error
             if (e.message && e.message.includes("Please provide a reassign_stage_id")) {
                 // Populate reassignment options
                 const stageListRes = await APIClient.get(`/api/pipeline/stages/?pipeline=${activePipelineId}`);
-                if (stageListRes.success) {
+                let stages = [];
+                if (Array.isArray(stageListRes)) {
+                    stages = stageListRes;
+                } else if (stageListRes && stageListRes.hasOwnProperty('success')) {
+                    stages = stageListRes.data || [];
+                } else if (stageListRes && stageListRes.results) {
+                    stages = stageListRes.results;
+                }
+                
+                if (reassignSelector) {
                     reassignSelector.innerHTML = '<option value="">Choose a stage...</option>';
-                    const stages = stageListRes.data.filter(s => s.id !== stageId);
+                    const filteredStages = stages.filter(s => s.id !== stageId);
                     
-                    stages.forEach(s => {
+                    filteredStages.forEach(s => {
                         const opt = document.createElement('option');
                         opt.value = s.id;
                         opt.textContent = `${s.name} (${s.entity_type})`;
@@ -351,31 +416,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    confirmReassignDeleteBtn.addEventListener('click', async () => {
-        const reassignId = reassignSelector.value;
-        if (!reassignId) {
-            alert('Please select a reassignment target stage.');
-            return;
-        }
-
-        confirmReassignDeleteBtn.disabled = true;
-        
-        try {
-            const res = await APIClient.delete(`/api/pipeline/stages/${deletingStageId}/`, {
-                reassign_stage_id: parseInt(reassignId)
-            });
-            if (res.success) {
-                UIUtils.showAlert('mainAlertContainer', 'Cards successfully reassigned and stage deleted.');
-                bsReassignModal.hide();
-                loadStages(activePipelineId);
+    if (confirmReassignDeleteBtn) {
+        confirmReassignDeleteBtn.addEventListener('click', async () => {
+            const reassignId = reassignSelector.value;
+            if (!reassignId) {
+                alert('Please select a reassignment target stage.');
+                return;
             }
-        } catch (e) {
-            alert(e.message || 'Failed to reassign cards and delete stage.');
-        } finally {
-            confirmReassignDeleteBtn.disabled = false;
-        }
-    });
+
+            confirmReassignDeleteBtn.disabled = true;
+            
+            try {
+                const res = await APIClient.delete(`/api/pipeline/stages/${deletingStageId}/`, {
+                    reassign_stage_id: parseInt(reassignId)
+                });
+                if (res) {
+                    UIUtils.showAlert('mainAlertContainer', 'Cards successfully reassigned and stage deleted.');
+                    bsReassignModal.hide();
+                    await loadStages(activePipelineId);
+                }
+            } catch (e) {
+                alert(e.message || 'Failed to reassign cards and delete stage.');
+            } finally {
+                confirmReassignDeleteBtn.disabled = false;
+            }
+        });
+    }
 
     // --- Initialize ---
-    loadPipelines();
+    (async () => {
+        try {
+            console.log("Initializing settings page...");
+            await loadPipelines();
+        } catch (err) {
+            console.error("Settings initialization failed:", err);
+        }
+    })();
 });

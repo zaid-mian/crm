@@ -51,14 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Prepend to list
-        if (logList.querySelector('.text-center')) {
+        if (logList && logList.querySelector('.text-center')) {
             logList.innerHTML = '';
         }
-        logList.insertBefore(item, logList.firstChild);
-
-        // Limit log items to 50
-        while (logList.children.length > 50) {
-            logList.removeChild(logList.lastChild);
+        if (logList) {
+            logList.insertBefore(item, logList.firstChild);
+            // Limit log items to 50
+            while (logList.children.length > 50) {
+                logList.removeChild(logList.lastChild);
+            }
         }
 
         renderRequestDetails(log);
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderRequestDetails(log) {
+        if (!detailViewer) return;
         detailViewer.innerHTML = `
             <div class="mb-2">
                 <strong class="small text-muted text-uppercase">Request Endpoint:</strong>
@@ -149,17 +151,19 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (entityType === 'lead') {
                 const response = await APIClient.get(`/api/leads/${id}/`);
-                if (response.success) {
-                    renderLeadForm(response.data, cardEl);
+                const lead = response.hasOwnProperty('success') ? response.data : response;
+                if (lead) {
+                    renderLeadForm(lead, cardEl);
                 } else {
-                    drawerContent.innerHTML = `<div class="alert alert-danger">${response.message || 'Error loading details.'}</div>`;
+                    drawerContent.innerHTML = `<div class="alert alert-danger">Error loading details.</div>`;
                 }
             } else {
                 const response = await APIClient.get(`/api/opportunities/${id}/`);
-                if (response.success) {
-                    renderOpportunityForm(response.data, cardEl);
+                const opp = response.hasOwnProperty('success') ? response.data : response;
+                if (opp) {
+                    renderOpportunityForm(opp, cardEl);
                 } else {
-                    drawerContent.innerHTML = `<div class="alert alert-danger">${response.message || 'Error loading details.'}</div>`;
+                    drawerContent.innerHTML = `<div class="alert alert-danger">Error loading details.</div>`;
                 }
             }
         } catch (error) {
@@ -260,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const updateRes = await APIClient.put(`/api/leads/${lead.id}/`, payload);
-                if (updateRes.success) {
+                if (updateRes) {
                     if (newSalesperson !== lead.assigned_salesperson) {
                         await APIClient.post(`/api/leads/${lead.id}/assign/`, {
                             assigned_salesperson: newSalesperson
@@ -279,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bsDrawer.hide();
                     loadPipeline();
                 } else {
-                    UIUtils.showAlert('mainAlertContainer', updateRes.message || 'Failed to save lead.', 'danger');
+                    UIUtils.showAlert('mainAlertContainer', 'Failed to save lead.', 'danger');
                 }
             } catch (err) {
                 UIUtils.showAlert('mainAlertContainer', err.message || 'Error occurred while saving.', 'danger');
@@ -394,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const updateRes = await APIClient.put(`/api/opportunities/${opp.id}/`, payload);
-                if (updateRes.success) {
+                if (updateRes) {
                     if (newStageId !== opp.pipeline_stage) {
                         await APIClient.post('/api/pipeline/move/', {
                             entity_type: 'opportunity',
@@ -407,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     bsDrawer.hide();
                     loadPipeline();
                 } else {
-                    UIUtils.showAlert('mainAlertContainer', updateRes.message || 'Failed to save opportunity.', 'danger');
+                    UIUtils.showAlert('mainAlertContainer', 'Failed to save opportunity.', 'danger');
                 }
             } catch (err) {
                 UIUtils.showAlert('mainAlertContainer', err.message || 'Error occurred while saving.', 'danger');
@@ -422,13 +426,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Load Pipelines list ---
     async function loadPipelines() {
         try {
+            console.log("Calling GET /api/pipelines/...");
             const response = await APIClient.get('/api/pipelines/');
-            if (response.success) {
+            console.log("Response received from GET /api/pipelines/:", response);
+            
+            // Normalize wrapped/unwrapped REST response
+            let pipelines = [];
+            if (Array.isArray(response)) {
+                pipelines = response;
+            } else if (response && response.hasOwnProperty('success')) {
+                pipelines = response.data || [];
+            } else if (response && response.results) {
+                pipelines = response.results;
+            } else {
+                console.error("Unknown pipelines response format:", response);
+                pipelines = [];
+            }
+            
+            console.log("Pipelines loaded", pipelines);
+            
+            if (pipelineSelect) {
                 pipelineSelect.innerHTML = '';
-                const pipelines = response.data;
                 if (pipelines.length === 0) {
                     pipelineSelect.innerHTML = '<option value="">No pipelines configured</option>';
-                    boardContainer.innerHTML = '<div class="text-center py-5 text-muted w-100">Configure a pipeline and stages in settings first.</div>';
+                    if (boardContainer) {
+                        boardContainer.innerHTML = '<div class="text-center py-5 text-muted w-100">Configure a pipeline and stages in settings first.</div>';
+                    }
                     return;
                 }
 
@@ -441,17 +464,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Default selection
                 activePipelineId = parseInt(pipelineSelect.value);
-                loadPipeline();
+                console.log("Selected pipeline:", activePipelineId);
+                console.log("Calling loadPipeline...");
+                await loadPipeline();
             }
         } catch (e) {
+            console.error("Error in loadPipelines:", e);
             UIUtils.showAlert('mainAlertContainer', 'Failed to fetch pipelines list.', 'danger');
         }
     }
 
-    pipelineSelect.addEventListener('change', () => {
-        activePipelineId = parseInt(pipelineSelect.value);
-        loadPipeline();
-    });
+    if (pipelineSelect) {
+        pipelineSelect.addEventListener('change', () => {
+            activePipelineId = parseInt(pipelineSelect.value);
+            loadPipeline();
+        });
+    }
 
     // --- Load Pipeline Stages & Cards ---
     async function loadPipeline() {
@@ -461,122 +489,173 @@ document.addEventListener('DOMContentLoaded', () => {
         sortables.forEach(s => s.destroy());
         sortables.length = 0;
 
-        boardContainer.innerHTML = '<div class="text-center py-5 text-muted w-100"><div class="spinner-border text-primary me-2" role="status"></div>Loading pipeline layout...</div>';
+        if (boardContainer) {
+            boardContainer.innerHTML = '<div class="text-center py-5 text-muted w-100"><div class="spinner-border text-primary me-2" role="status"></div>Loading pipeline layout...</div>';
+        }
 
         try {
             // 1. Fetch Stages configurations
+            console.log(`Calling GET /api/pipeline/stages/?pipeline=${activePipelineId}...`);
             const stagesRes = await APIClient.get(`/api/pipeline/stages/?pipeline=${activePipelineId}`);
-            if (stagesRes.success) {
-                activeStages = stagesRes.data;
-                activeStages.sort((a, b) => a.order - b.order);
-                
-                if (activeStages.length === 0) {
+            console.log("Response received from GET /api/pipeline/stages/:", stagesRes);
+            
+            let stages = [];
+            if (Array.isArray(stagesRes)) {
+                stages = stagesRes;
+            } else if (stagesRes && stagesRes.hasOwnProperty('success')) {
+                stages = stagesRes.data || [];
+            } else if (stagesRes && stagesRes.results) {
+                stages = stagesRes.results;
+            } else {
+                console.error("Unknown stages response format:", stagesRes);
+                stages = [];
+            }
+            
+            activeStages = stages;
+            activeStages.sort((a, b) => a.order - b.order);
+            console.log("Stages loaded", activeStages);
+            
+            if (activeStages.length === 0) {
+                if (boardContainer) {
                     boardContainer.innerHTML = '<div class="text-center py-5 text-muted w-100">No stages configured in this pipeline. Please add stages in Settings.</div>';
-                    return;
+                }
+                return;
+            }
+
+            // Render dynamic columns layout
+            if (boardContainer) {
+                boardContainer.innerHTML = '';
+            }
+            const countBadges = {};
+            const lists = {};
+
+            activeStages.forEach(stage => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'kanban-column flex-shrink-0';
+                colDiv.dataset.stageId = stage.id;
+                colDiv.innerHTML = `
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 font-weight-bold" style="color: ${stage.color || '#333333'};">${stage.name}</h6>
+                            <span class="badge rounded-pill" style="background-color: ${stage.color || '#6c757d'}22; color: ${stage.color || '#6c757d'};" id="count-${stage.id}">0</span>
+                        </div>
+                        <div class="card-body p-2 kanban-list" id="list-${stage.id}"></div>
+                    </div>
+                `;
+                if (boardContainer) {
+                    boardContainer.appendChild(colDiv);
                 }
 
-                // Render dynamic columns layout
-                boardContainer.innerHTML = '';
-                const countBadges = {};
-                const lists = {};
+                lists[stage.id] = document.getElementById(`list-${stage.id}`);
+                countBadges[stage.id] = document.getElementById(`count-${stage.id}`);
+            });
 
-                activeStages.forEach(stage => {
-                    const colDiv = document.createElement('div');
-                    colDiv.className = 'kanban-column flex-shrink-0';
-                    colDiv.dataset.stageId = stage.id;
-                    colDiv.innerHTML = `
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 font-weight-bold" style="color: ${stage.color || '#333333'};">${stage.name}</h6>
-                                <span class="badge rounded-pill" style="background-color: ${stage.color || '#6c757d'}22; color: ${stage.color || '#6c757d'};" id="count-${stage.id}">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-${stage.id}"></div>
-                        </div>
-                    `;
-                    boardContainer.appendChild(colDiv);
+            // 2. Fetch cards matching active stages
+            console.log("Calling GET /api/pipeline/...");
+            const cardsRes = await APIClient.get('/api/pipeline/');
+            console.log("Response received from GET /api/pipeline/:", cardsRes);
+            
+            let cards = [];
+            if (cardsRes && cardsRes.hasOwnProperty('success')) {
+                cards = cardsRes.data || [];
+            } else if (Array.isArray(cardsRes)) {
+                cards = cardsRes;
+            } else if (cardsRes && cardsRes.results) {
+                cards = cardsRes.results;
+            } else {
+                console.error("Unknown cards response format:", cardsRes);
+                cards = [];
+            }
 
-                    lists[stage.id] = document.getElementById(`list-${stage.id}`);
-                    countBadges[stage.id] = document.getElementById(`count-${stage.id}`);
-                });
+            const columnCounts = {};
+            activeStages.forEach(s => columnCounts[s.id] = 0);
 
-                // 2. Fetch cards matching active stages
-                const cardsRes = await APIClient.get('/api/pipeline/');
-                if (cardsRes.success) {
-                    const cards = cardsRes.data;
-                    const columnCounts = {};
-                    activeStages.forEach(s => columnCounts[s.id] = 0);
+            cards.forEach(card => {
+                const stageId = card.pipeline_stage_id;
+                if (stageId && lists[stageId]) {
+                    const cardEl = createCardElement(card);
+                    lists[stageId].appendChild(cardEl);
+                    columnCounts[stageId]++;
+                }
+            });
 
-                    cards.forEach(card => {
-                        const stageId = card.pipeline_stage_id;
-                        if (stageId && lists[stageId]) {
-                            const cardEl = createCardElement(card);
-                            lists[stageId].appendChild(cardEl);
-                            columnCounts[stageId]++;
+            // Update count badges
+            activeStages.forEach(s => {
+                if (countBadges[s.id]) {
+                    countBadges[s.id].textContent = columnCounts[s.id];
+                }
+            });
+
+            console.log("Rendering board...");
+
+            // 3. Initialize SortableJS drag-and-drop
+            activeStages.forEach(stage => {
+                if (lists[stage.id]) {
+                    const sortable = new Sortable(lists[stage.id], {
+                        group: 'pipeline',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        onEnd: async (evt) => {
+                            const itemEl = evt.item;
+                            const sourceList = evt.from;
+                            const targetList = evt.to;
+                            const sourceStageId = parseInt(sourceList.parentElement.parentElement.dataset.stageId);
+                            const targetStageId = parseInt(targetList.parentElement.parentElement.dataset.stageId);
+
+                            if (sourceStageId === targetStageId) return;
+
+                            const entityType = itemEl.dataset.type;
+                            const idVal = itemEl.dataset.id;
+
+                            try {
+                                const moveResponse = await APIClient.post('/api/pipeline/move/', {
+                                    entity_type: entityType,
+                                    id: parseInt(idVal),
+                                    target_stage_id: targetStageId
+                                });
+
+                                if (moveResponse) {
+                                    const responseData = moveResponse.hasOwnProperty('success') ? moveResponse.data : moveResponse;
+                                    itemEl.dataset.type = responseData.entity_type;
+                                    itemEl.dataset.id = responseData.id;
+                                    itemEl.innerHTML = getCardInnerHTML(responseData);
+
+                                    countBadges[sourceStageId].textContent = sourceList.children.length;
+                                    countBadges[targetStageId].textContent = targetList.children.length;
+
+                                    UIUtils.showAlert('mainAlertContainer', 'Card moved successfully.');
+                                    
+                                    // If drop triggered lead -> opp conversion, reload board layout to place opportunity cards
+                                    const targetStageObj = activeStages.find(x => x.id === targetStageId);
+                                    if (entityType === 'lead' && targetStageObj && targetStageObj.stage_type === 'CONVERSION') {
+                                        loadPipeline();
+                                    }
+                                }
+                            } catch (error) {
+                                UIUtils.showAlert('mainAlertContainer', error.message || 'Failed to move card.', 'danger');
+                                loadPipeline();
+                            }
                         }
                     });
-
-                    // Update count badges
-                    activeStages.forEach(s => {
-                        countBadges[s.id].textContent = columnCounts[s.id];
-                    });
-
-                    // 3. Initialize SortableJS drag-and-drop
-                    activeStages.forEach(stage => {
-                        const sortable = new Sortable(lists[stage.id], {
-                            group: 'pipeline',
-                            animation: 150,
-                            ghostClass: 'sortable-ghost',
-                            onEnd: async (evt) => {
-                                const itemEl = evt.item;
-                                const sourceList = evt.from;
-                                const targetList = evt.to;
-                                const sourceStageId = parseInt(sourceList.parentElement.parentElement.dataset.stageId);
-                                const targetStageId = parseInt(targetList.parentElement.parentElement.dataset.stageId);
-
-                                if (sourceStageId === targetStageId) return;
-
-                                const entityType = itemEl.dataset.type;
-                                const idVal = itemEl.dataset.id;
-
-                                try {
-                                    const moveResponse = await APIClient.post('/api/pipeline/move/', {
-                                        entity_type: entityType,
-                                        id: parseInt(idVal),
-                                        target_stage_id: targetStageId
-                                    });
-
-                                    if (moveResponse.success) {
-                                        const updatedCard = moveResponse.data;
-                                        itemEl.dataset.type = updatedCard.entity_type;
-                                        itemEl.dataset.id = updatedCard.id;
-                                        itemEl.innerHTML = getCardInnerHTML(updatedCard);
-
-                                        countBadges[sourceStageId].textContent = sourceList.children.length;
-                                        countBadges[targetStageId].textContent = targetList.children.length;
-
-                                        UIUtils.showAlert('mainAlertContainer', moveResponse.message || 'Card moved successfully.');
-                                        
-                                        // If drop triggered lead -> opp conversion, reload board layout to place opportunity cards
-                                        const targetStageObj = activeStages.find(x => x.id === targetStageId);
-                                        if (entityType === 'lead' && targetStageObj && targetStageObj.stage_type === 'CONVERSION') {
-                                            loadPipeline();
-                                        }
-                                    }
-                                } catch (error) {
-                                    UIUtils.showAlert('mainAlertContainer', error.message || 'Failed to move card.', 'danger');
-                                    loadPipeline();
-                                }
-                            }
-                        });
-                        sortables.push(sortable);
-                    });
+                    sortables.push(sortable);
                 }
-            }
+            });
         } catch (error) {
-            boardContainer.innerHTML = '<div class="text-center py-5 text-danger w-100">Error loading pipeline board data.</div>';
+            console.error("Error in loadPipeline:", error);
+            if (boardContainer) {
+                boardContainer.innerHTML = '<div class="text-center py-5 text-danger w-100">Error loading pipeline board data.</div>';
+            }
         }
     }
 
     // --- Init ---
-    loadPipelines();
+    (async () => {
+        try {
+            console.log("Initializing pipeline board...");
+            await loadPipelines();
+            console.log("Pipeline board initialized successfully.");
+        } catch (err) {
+            console.error("Pipeline initialization failed:", err);
+        }
+    })();
 });
