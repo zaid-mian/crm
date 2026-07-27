@@ -42,10 +42,16 @@
     <!-- Main Navigation Bar -->
     <nav class="navbar navbar-dark bg-dark shadow-sm">
         <div class="container-fluid px-4">
-            <a href="index.html" class="navbar-brand mb-0 h1 d-flex align-items-center">
-                <span class="text-primary me-2 font-weight-bold">&laquo;</span>
-                <span class="small font-weight-medium">AdaptCRM Pipeline Board</span>
-            </a>
+            <div class="d-flex align-items-center gap-3">
+                <a href="index.html" class="navbar-brand mb-0 h1 d-flex align-items-center">
+                    <span class="text-primary me-2 font-weight-bold">&laquo;</span>
+                    <span class="small font-weight-medium">AdaptCRM Pipeline Board</span>
+                </a>
+                <select class="form-select form-select-sm" id="pipelineSelect" style="width: 200px;">
+                    <option value="">Loading pipelines...</option>
+                </select>
+                <a href="pipeline-settings.html" class="btn btn-outline-light btn-sm">Pipeline Settings</a>
+            </div>
             <span class="navbar-text text-muted small">
                 Connected Base: <span id="connectedBaseDisplay" class="font-monospace text-light">http://localhost:8000</span>
             </span>
@@ -61,95 +67,7 @@
             <!-- Left Kanban Board Area (75%) -->
             <div class="col-lg-9 col-xl-9">
                 <div class="d-flex overflow-auto pb-4 gap-3" style="min-height: 600px;" id="kanbanBoard">
-                    
-                    <!-- NEW Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="NEW">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-dark font-weight-bold">New</h6>
-                                <span class="badge bg-secondary rounded-pill" id="count-NEW">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-NEW"></div>
-                        </div>
-                    </div>
-
-                    <!-- CONTACTED Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="CONTACTED">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-primary font-weight-bold">Contacted</h6>
-                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill" id="count-CONTACTED">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-CONTACTED"></div>
-                        </div>
-                    </div>
-
-                    <!-- FOLLOW_UP Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="FOLLOW_UP">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-warning font-weight-bold">Follow Up</h6>
-                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill" id="count-FOLLOW_UP">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-FOLLOW_UP"></div>
-                        </div>
-                    </div>
-
-                    <!-- QUALIFIED Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="QUALIFIED">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-info font-weight-bold">Qualified</h6>
-                                <span class="badge bg-info bg-opacity-10 text-info rounded-pill" id="count-QUALIFIED">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-QUALIFIED"></div>
-                        </div>
-                    </div>
-
-                    <!-- PROPOSAL Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="PROPOSAL">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-indigo font-weight-bold" style="color: #6610f2;">Proposal</h6>
-                                <span class="badge rounded-pill" style="background-color: rgba(102,16,242,0.1); color: #6610f2;" id="count-PROPOSAL">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-PROPOSAL"></div>
-                        </div>
-                    </div>
-
-                    <!-- NEGOTIATION Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="NEGOTIATION">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-purple font-weight-bold" style="color: #6f42c1;">Negotiation</h6>
-                                <span class="badge rounded-pill" style="background-color: rgba(111,66,193,0.1); color: #6f42c1;" id="count-NEGOTIATION">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-NEGOTIATION"></div>
-                        </div>
-                    </div>
-
-                    <!-- WON Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="WON">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-success font-weight-bold">Won</h6>
-                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill" id="count-WON">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-WON"></div>
-                        </div>
-                    </div>
-
-                    <!-- LOST Column -->
-                    <div class="kanban-column flex-shrink-0" data-stage="LOST">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-danger font-weight-bold">Lost</h6>
-                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill" id="count-LOST">0</span>
-                            </div>
-                            <div class="card-body p-2 kanban-list" id="list-LOST"></div>
-                        </div>
-                    </div>
-
+                    <!-- Columns will be loaded dynamically here -->
                 </div>
             </div>
 

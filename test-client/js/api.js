@@ -121,6 +121,10 @@ class APIClient {
     static patch(path, body) {
         return this.request('PATCH', path, body);
     }
+
+    static delete(path, body = null) {
+        return this.request('DELETE', path, body);
+    }
 }
 
 // Bind to window to allow global reuse across modules
