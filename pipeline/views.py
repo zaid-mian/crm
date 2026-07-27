@@ -32,29 +32,64 @@ class PipelineViewSet(viewsets.ViewSet):
         """
         entity_type = request.data.get('entity_type')
         id_val = request.data.get('id')
-        target_stage = request.data.get('target_stage')
+        target_stage_name = request.data.get('target_stage')
+        target_stage_id = request.data.get('target_stage_id')
 
-        if not entity_type or id_val is None or not target_stage:
+        if not entity_type or id_val is None:
             return api_error(
-                message="Missing required fields: entity_type, id, and target_stage.",
+                message="Missing required fields: entity_type and id.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        # Enforce valid target stages
-        valid_stages = ['NEW', 'CONTACTED', 'FOLLOW_UP', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'WON', 'LOST']
-        if target_stage not in valid_stages:
-            return api_error(
-                message=f"Invalid target stage. Must be one of: {', '.join(valid_stages)}",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
-
+        from pipeline.models import PipelineStage
         from leads.models import Lead
         from opportunities.models import Opportunity
         from django.db import transaction
 
+        # Look up stage
+        target_stage = None
+        if target_stage_id is not None:
+            try:
+                target_stage = PipelineStage.objects.get(pk=target_stage_id)
+            except PipelineStage.DoesNotExist:
+                return api_error(
+                    message="Target stage does not exist.",
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+        elif target_stage_name:
+            # Backward compatibility mapping
+            stage_mapping = {
+                'NEW': 0,
+                'CONTACTED': 1,
+                'FOLLOW_UP': 2,
+                'QUALIFIED': 3,
+                'PROPOSAL': 4,
+                'NEGOTIATION': 5,
+                'WON': 6,
+                'LOST': 7
+            }
+            order_val = stage_mapping.get(target_stage_name)
+            if order_val is None:
+                return api_error(
+                    message=f"Invalid target stage name: {target_stage_name}",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                target_stage = PipelineStage.objects.get(pipeline__name="Standard Pipeline", order=order_val)
+            except PipelineStage.DoesNotExist:
+                return api_error(
+                    message="Standard Pipeline default stages are not configured.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return api_error(
+                message="Provide target_stage_id or target_stage name.",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
         if entity_type == 'lead':
             try:
-                lead = Lead.objects.get(pk=id_val)
+                lead = Lead.objects.select_related('pipeline_stage', 'assigned_salesperson').get(pk=id_val)
             except Lead.DoesNotExist:
                 return api_error(
                     message="Lead does not exist.",
@@ -70,45 +105,51 @@ class PipelineViewSet(viewsets.ViewSet):
                 )
 
             # Rule: Terminal stage lock
+            current_stage = lead.pipeline_stage
+            is_current_terminal = current_stage and current_stage.stage_type in ['WON', 'LOST']
+            if (is_current_terminal or lead.status == 'LOST') and not is_manager_or_admin(request.user):
+                return api_error(
+                    message="Closed leads are locked and cannot be modified by salespeople.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
             if lead.is_converted:
                 return api_error(
                     message="Converted leads are read-only and cannot be modified.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
-            if lead.status == 'LOST':
-                return api_error(
-                    message="Lost leads are locked and cannot be modified.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
 
             # Rule: Unidirectional promotion check
-            if target_stage in ['PROPOSAL', 'NEGOTIATION', 'WON']:
+            if target_stage.entity_type == 'OPPORTUNITY' and target_stage.stage_type not in ['CONVERSION', 'LOST']:
                 return api_error(
                     message="Unconverted leads cannot be moved to Opportunity-only stages.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
 
             # Rule: Move validation (salesperson must be assigned before moving past NEW)
-            if target_stage != 'NEW' and not lead.assigned_salesperson:
-                return api_error(
-                    message="Assign the lead to a salesperson before moving it from NEW.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
+            if not lead.assigned_salesperson:
+                first_stage = PipelineStage.objects.filter(pipeline=target_stage.pipeline).order_by('order').first()
+                if target_stage != first_stage:
+                    return api_error(
+                        message="Assign the lead to a salesperson before moving it from NEW.",
+                        status_code=status.HTTP_400_BAD_REQUEST
+                    )
 
             # Execution
-            if target_stage == 'QUALIFIED':
+            if target_stage.stage_type == 'CONVERSION':
                 from leads.services import LeadWorkflowService
                 try:
                     with transaction.atomic():
-                        # Briefly set status to QUALIFIED
                         lead.status = 'QUALIFIED'
+                        lead.pipeline_stage = target_stage
                         lead.save()
                         
-                        # Convert lead
                         converted_lead = LeadWorkflowService.convert_lead(lead)
                         opportunity = converted_lead.converted_opportunity
                         
-                    # Return newly created Opportunity card DTO
+                        opportunity.pipeline_stage = target_stage
+                        opportunity.stage = 'QUALIFICATION'
+                        opportunity.save()
+                        
                     opportunity = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opportunity.pk)
                     contact = opportunity.primary_contact
                     card_data = {
@@ -126,7 +167,8 @@ class PipelineViewSet(viewsets.ViewSet):
                         "probability": opportunity.probability,
                         "notes": opportunity.description or '',
                         "company_id": opportunity.company_id,
-                        "primary_contact_id": opportunity.primary_contact_id
+                        "primary_contact_id": opportunity.primary_contact_id,
+                        "pipeline_stage_id": opportunity.pipeline_stage_id
                     }
                     return api_success(
                         data=card_data,
@@ -138,9 +180,20 @@ class PipelineViewSet(viewsets.ViewSet):
                         status_code=status.HTTP_400_BAD_REQUEST
                     )
             else:
-                # Update Lead status (NEW, CONTACTED, FOLLOW_UP, LOST)
-                lead.status = target_stage
+                lead.pipeline_stage = target_stage
+                if target_stage.stage_type == 'NORMAL_LEAD':
+                    if target_stage.order == 0:
+                        lead.status = 'NEW'
+                    elif target_stage.order == 1:
+                        lead.status = 'CONTACTED'
+                    else:
+                        lead.status = 'FOLLOW_UP'
+                elif target_stage.stage_type == 'LOST':
+                    lead.status = 'LOST'
                 lead.save()
+                
+                from pipeline.services.query import map_stage_to_enum
+                stage_repr = map_stage_to_enum(target_stage, lead.status)
                 
                 card_data = {
                     "entity_type": "lead",
@@ -151,13 +204,14 @@ class PipelineViewSet(viewsets.ViewSet):
                     "email": lead.email or '',
                     "assigned_salesperson_id": lead.assigned_salesperson_id,
                     "assigned_salesperson_name": lead.assigned_salesperson.username if lead.assigned_salesperson else None,
-                    "stage": lead.status,
+                    "stage": stage_repr,
                     "amount": None,
                     "expected_close_date": None,
                     "probability": None,
                     "notes": lead.notes or '',
                     "company_id": None,
-                    "primary_contact_id": None
+                    "primary_contact_id": None,
+                    "pipeline_stage_id": lead.pipeline_stage_id
                 }
                 return api_success(
                     data=card_data,
@@ -166,7 +220,7 @@ class PipelineViewSet(viewsets.ViewSet):
 
         elif entity_type == 'opportunity':
             try:
-                opp = Opportunity.objects.get(pk=id_val)
+                opp = Opportunity.objects.select_related('pipeline_stage', 'assigned_salesperson').get(pk=id_val)
             except Opportunity.DoesNotExist:
                 return api_error(
                     message="Opportunity does not exist.",
@@ -182,32 +236,39 @@ class PipelineViewSet(viewsets.ViewSet):
                 )
 
             # Rule: Terminal stage lock for salespeople
-            if opp.stage in ['CLOSED_WON', 'CLOSED_LOST']:
-                if not is_manager_or_admin(request.user):
-                    return api_error(
-                        message="Closed opportunities are locked and cannot be modified by salespeople.",
-                        status_code=status.HTTP_400_BAD_REQUEST
-                    )
+            current_stage = opp.pipeline_stage
+            is_current_terminal = current_stage and current_stage.stage_type in ['WON', 'LOST']
+            if (is_current_terminal or opp.stage in ['CLOSED_WON', 'CLOSED_LOST']) and not is_manager_or_admin(request.user):
+                return api_error(
+                    message="Closed opportunities are locked and cannot be modified by salespeople.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
 
             # Rule: Unidirectional promotion check
-            if target_stage in ['NEW', 'CONTACTED', 'FOLLOW_UP']:
+            if target_stage.entity_type == 'LEAD':
                 return api_error(
                     message="Opportunities cannot be moved to Lead-only stages.",
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Map target stage back to Opportunity stage
-            opp_stage_mapping = {
-                'QUALIFIED': 'QUALIFICATION',
-                'PROPOSAL': 'PROPOSAL',
-                'NEGOTIATION': 'NEGOTIATION',
-                'WON': 'CLOSED_WON',
-                'LOST': 'CLOSED_LOST'
-            }
-            opp.stage = opp_stage_mapping[target_stage]
+            # Map stage and save
+            opp.pipeline_stage = target_stage
+            if target_stage.stage_type == 'CONVERSION':
+                opp.stage = 'QUALIFICATION'
+            elif target_stage.stage_type == 'NORMAL_OPPORTUNITY':
+                if target_stage.order == 4:
+                    opp.stage = 'PROPOSAL'
+                else:
+                    opp.stage = 'NEGOTIATION'
+            elif target_stage.stage_type == 'WON':
+                opp.stage = 'CLOSED_WON'
+            elif target_stage.stage_type == 'LOST':
+                opp.stage = 'CLOSED_LOST'
             opp.save()
 
-            # Return updated Opportunity card DTO
+            from pipeline.services.query import map_stage_to_enum
+            stage_repr = map_stage_to_enum(target_stage, opp.stage)
+
             opp = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opp.pk)
             contact = opp.primary_contact
             card_data = {
@@ -219,13 +280,14 @@ class PipelineViewSet(viewsets.ViewSet):
                 "email": (contact.email if contact else '') or '',
                 "assigned_salesperson_id": opp.assigned_salesperson_id,
                 "assigned_salesperson_name": opp.assigned_salesperson.username if opp.assigned_salesperson else None,
-                "stage": target_stage,
+                "stage": stage_repr,
                 "amount": opp.amount,
                 "expected_close_date": opp.expected_close_date,
                 "probability": opp.probability,
                 "notes": opp.description or '',
                 "company_id": opp.company_id,
-                "primary_contact_id": opp.primary_contact_id
+                "primary_contact_id": opp.primary_contact_id,
+                "pipeline_stage_id": opp.pipeline_stage_id
             }
             return api_success(
                 data=card_data,

@@ -62,6 +62,26 @@ class PipelineViewSetTestCase(APITestCase):
             expected_close_date=timezone.now().date()
         )
 
+        # Setup standard pipeline stages for test records
+        from pipeline.models import PipelineStage
+        self.stage_new = PipelineStage.objects.get(order=0)
+        self.stage_contacted = PipelineStage.objects.get(order=1)
+        self.stage_followup = PipelineStage.objects.get(order=2)
+        self.stage_conversion = PipelineStage.objects.get(order=3)
+        self.stage_proposal = PipelineStage.objects.get(order=4)
+        self.stage_negotiation = PipelineStage.objects.get(order=5)
+        self.stage_won = PipelineStage.objects.get(order=6)
+        self.stage_lost = PipelineStage.objects.get(order=7)
+
+        self.lead_a.pipeline_stage = self.stage_new
+        self.lead_a.save()
+        self.lead_b.pipeline_stage = self.stage_new
+        self.lead_b.save()
+        self.lead_unassigned.pipeline_stage = self.stage_new
+        self.lead_unassigned.save()
+        self.opp.pipeline_stage = self.stage_conversion
+        self.opp.save()
+
         self.list_url = reverse('pipeline:pipeline-list')
         self.move_url = reverse('pipeline:pipeline-move')
 
@@ -229,3 +249,36 @@ class PipelineViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(self.move_url, data=payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_move_lead_by_stage_id(self):
+        """Verify Lead moves successfully using target_stage_id."""
+        self.client.force_authenticate(user=self.sales_a)
+        
+        # Move Lead to Contacted stage (order=1)
+        payload = {
+            "entity_type": "lead",
+            "id": self.lead_a.id,
+            "target_stage_id": self.stage_contacted.id
+        }
+        response = self.client.post(self.move_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.lead_a.refresh_from_db()
+        self.assertEqual(self.lead_a.pipeline_stage, self.stage_contacted)
+        self.assertEqual(self.lead_a.status, 'CONTACTED')
+
+    def test_move_lead_to_conversion_stage_type(self):
+        """Verify Lead converts to Opportunity when moved to stage_type=CONVERSION."""
+        self.client.force_authenticate(user=self.sales_a)
+        payload = {
+            "entity_type": "lead",
+            "id": self.lead_a.id,
+            "target_stage_id": self.stage_conversion.id
+        }
+        response = self.client.post(self.move_url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["entity_type"], "opportunity")
+        
+        self.lead_a.refresh_from_db()
+        self.assertTrue(self.lead_a.is_converted)
+        self.assertEqual(self.lead_a.converted_opportunity.pipeline_stage, self.stage_conversion)

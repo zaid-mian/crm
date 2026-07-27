@@ -16,3 +16,4 @@ class PipelineCardSerializer(serializers.Serializer):
     notes = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
     company_id = serializers.IntegerField(read_only=True, allow_null=True)
     primary_contact_id = serializers.IntegerField(read_only=True, allow_null=True)
+    pipeline_stage_id = serializers.IntegerField(read_only=True, allow_null=True)
