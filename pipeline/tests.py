@@ -282,3 +282,100 @@ class PipelineViewSetTestCase(APITestCase):
         self.lead_a.refresh_from_db()
         self.assertTrue(self.lead_a.is_converted)
         self.assertEqual(self.lead_a.converted_opportunity.pipeline_stage, self.stage_conversion)
+
+    def test_pipeline_crud_admin(self):
+        """Verify Admin can create, read, update, and delete Pipelines."""
+        self.client.force_authenticate(user=self.admin)
+        
+        # 1. Create
+        url = reverse('pipeline:pipelines-list')
+        payload = {"name": "New Pipeline", "description": "Dynamic custom pipeline"}
+        response = self.client.post(url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        pipeline_id = response.data["id"]
+
+        # 2. List/Detail
+        response = self.client.get(reverse('pipeline:pipelines-detail', args=[pipeline_id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "New Pipeline")
+
+        # 3. Update
+        response = self.client.patch(reverse('pipeline:pipelines-detail', args=[pipeline_id]), data={"name": "Updated Name"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "Updated Name")
+
+        # 4. Delete
+        response = self.client.delete(reverse('pipeline:pipelines-detail', args=[pipeline_id]))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_pipeline_crud_rbac_blocked_for_salesperson(self):
+        """Verify salesperson cannot modify Pipelines."""
+        self.client.force_authenticate(user=self.sales_a)
+        url = reverse('pipeline:pipelines-list')
+        payload = {"name": "Blocked Pipeline"}
+        response = self.client.post(url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_stage_crud_admin(self):
+        """Verify Admin can manage stages with validation constraints."""
+        self.client.force_authenticate(user=self.admin)
+        pipeline_id = self.stage_new.pipeline_id
+        
+        # 1. Create a normal Opportunity stage
+        url = reverse('pipeline:pipeline-stage-list')
+        payload = {
+            "pipeline": pipeline_id,
+            "name": "Demo Stage",
+            "entity_type": "OPPORTUNITY",
+            "order": 12,
+            "stage_type": "NORMAL_OPPORTUNITY",
+            "color": "#ffffff"
+        }
+        response = self.client.post(url, data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        stage_id = response.data["id"]
+
+        # 2. Invalid entity_type/stage_type combination check
+        payload_invalid = {
+            "pipeline": pipeline_id,
+            "name": "Invalid Stage",
+            "entity_type": "LEAD",
+            "order": 13,
+            "stage_type": "CONVERSION"
+        }
+        response = self.client.post(url, data=payload_invalid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("CONVERSION stage cannot belong to LEAD.", str(response.data))
+
+        # 3. Duplicate order validation check
+        payload_dup_order = {
+            "pipeline": pipeline_id,
+            "name": "Duplicate Stage",
+            "entity_type": "OPPORTUNITY",
+            "order": 12,
+            "stage_type": "NORMAL_OPPORTUNITY"
+        }
+        response = self.client.post(url, data=payload_dup_order)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_stage_deletion_active_cards_reassignment(self):
+        """Verify deletion locks on stages with active cards, and reassignment flow."""
+        self.client.force_authenticate(user=self.admin)
+        
+        # stage_new has lead_a, lead_b, and lead_unassigned.
+        url_detail = reverse('pipeline:pipeline-stage-detail', args=[self.stage_new.id])
+        
+        # 1. Deletion without reassignment fails
+        response = self.client.delete(url_detail)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot delete stage containing active cards.", response.data["message"])
+
+        # 2. Deletion with reassignment moves cards and succeeds
+        response = self.client.delete(url_detail, data={"reassign_stage_id": self.stage_contacted.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verify cards were reassigned
+        self.lead_a.refresh_from_db()
+        self.lead_b.refresh_from_db()
+        self.assertEqual(self.lead_a.pipeline_stage, self.stage_contacted)
+        self.assertEqual(self.lead_b.pipeline_stage, self.stage_contacted)

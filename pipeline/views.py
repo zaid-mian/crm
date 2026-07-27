@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, BasePermission
 from leads.utils.responses import api_success, api_error
 from pipeline.services.query import PipelineQueryService
 from pipeline.serializers import PipelineCardSerializer
@@ -298,3 +298,83 @@ class PipelineViewSet(viewsets.ViewSet):
                 message="Invalid entity_type. Must be 'lead' or 'opportunity'.",
                 status_code=status.HTTP_400_BAD_REQUEST
             )
+
+class IsManagerOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return True
+        from leads.permissions import is_manager_or_admin
+        return is_manager_or_admin(request.user)
+
+class PipelineModelViewSet(viewsets.ModelViewSet):
+    from pipeline.models import Pipeline
+    from pipeline.serializers import PipelineSerializer
+    serializer_class = PipelineSerializer
+    queryset = Pipeline.objects.all()
+    permission_classes = [IsAuthenticated, IsManagerOrAdmin]
+
+class PipelineStageViewSet(viewsets.ModelViewSet):
+    from pipeline.models import PipelineStage
+    from pipeline.serializers import PipelineStageSerializer
+    serializer_class = PipelineStageSerializer
+    queryset = PipelineStage.objects.all()
+    permission_classes = [IsAuthenticated, IsManagerOrAdmin]
+
+    def get_queryset(self):
+        pipeline_id = self.request.query_params.get('pipeline')
+        if pipeline_id:
+            return self.queryset.filter(pipeline_id=pipeline_id)
+        return self.queryset
+
+    def destroy(self, request, *args, **kwargs):
+        stage = self.get_object()
+        from leads.models import Lead
+        from opportunities.models import Opportunity
+        from pipeline.models import PipelineStage
+
+        # Validation Rule: check if there are active cards in the stage
+        active_leads = Lead.objects.filter(pipeline_stage=stage, is_converted=False).count()
+        active_opps = Opportunity.objects.filter(pipeline_stage=stage).count()
+
+        if active_leads > 0 or active_opps > 0:
+            reassign_stage_id = request.data.get('reassign_stage_id') or request.query_params.get('reassign_stage_id')
+            if not reassign_stage_id:
+                return api_error(
+                    message="Cannot delete stage containing active cards. Please provide a reassign_stage_id.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                reassign_stage = PipelineStage.objects.get(pk=reassign_stage_id, pipeline=stage.pipeline)
+            except PipelineStage.DoesNotExist:
+                return api_error(
+                    message="Reassignment stage does not exist or belongs to a different pipeline.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Move active cards to reassignment stage
+            Lead.objects.filter(pipeline_stage=stage).update(pipeline_stage=reassign_stage)
+            Opportunity.objects.filter(pipeline_stage=stage).update(pipeline_stage=reassign_stage)
+
+        # Deletion constraints for stage types:
+        if stage.stage_type == 'WON':
+            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='WON').count() <= 1:
+                return api_error(
+                    message="Cannot delete the only WON stage of the pipeline.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+        elif stage.stage_type == 'CONVERSION':
+            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='CONVERSION').count() <= 1:
+                return api_error(
+                    message="Cannot delete the only CONVERSION stage of the pipeline.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+        elif stage.stage_type == 'LOST':
+            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='LOST').count() <= 1:
+                return api_error(
+                    message="Cannot delete the last LOST stage of the pipeline.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+
+        stage.delete()
+        return api_success(message="Stage deleted successfully.")
