@@ -11,6 +11,11 @@ class Pipeline(models.Model):
     def __str__(self):
         return self.name
 
+class ActivePipelineStageManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class PipelineStage(models.Model):
     ENTITY_TYPE_CHOICES = [
         ('LEAD', 'Lead'),
@@ -24,6 +29,9 @@ class PipelineStage(models.Model):
         ('WON', 'Won Stage'),
         ('LOST', 'Lost Stage'),
     ]
+
+    objects = ActivePipelineStageManager()
+    all_objects = models.Manager()
 
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='stages')
     name = models.CharField(max_length=100)

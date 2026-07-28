@@ -55,14 +55,59 @@ class LeadWorkflowService:
         return lead
 
     @staticmethod
+    def validate_custom_values(pipeline, custom_values):
+        from pipeline.models import CustomForm
+        if not pipeline:
+            return
+        try:
+            custom_form = pipeline.custom_form
+        except CustomForm.DoesNotExist:
+            return
+        
+        if not custom_form.is_active:
+            return
+
+        fields = custom_form.fields.all()
+        errors = {}
+        for field in fields:
+            val = custom_values.get(field.label)
+            if field.required and (val is None or val == ''):
+                errors[field.label] = "This field is required."
+                continue
+            
+            if val is not None and val != '':
+                if field.field_type == 'NUMBER':
+                    try:
+                        float(val)
+                    except ValueError:
+                        errors[field.label] = "Must be a valid number."
+                elif field.field_type == 'DATE':
+                    from datetime import datetime
+                    try:
+                        datetime.strptime(str(val), '%Y-%m-%d')
+                    except ValueError:
+                        errors[field.label] = "Must be a valid date in YYYY-MM-DD format."
+                elif field.field_type == 'CHECKBOX':
+                    if not isinstance(val, bool) and val not in ['true', 'false', '1', '0', 1, 0, True, False]:
+                        errors[field.label] = "Must be a boolean value."
+                elif field.field_type == 'DROPDOWN':
+                    if field.options and val not in field.options:
+                        errors[field.label] = f"Must be one of the options: {', '.join(field.options)}."
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
     @transaction.atomic
-    def convert_lead(lead: Lead) -> Lead:
+    def convert_lead(lead: Lead, opp_data=None, custom_values=None) -> Lead:
         from datetime import timedelta
         from contacts.models import Contact
         from opportunities.models import Opportunity
         from companies.models import Company
         
         LeadWorkflowManager.validate_convert(lead)
+
+        custom_values = custom_values or {}
+        LeadWorkflowService.validate_custom_values(lead.pipeline, custom_values)
 
         # 1. Find Company by name__iexact
         c_name = lead.company_name.strip()
@@ -136,6 +181,17 @@ class LeadWorkflowService:
                 notes=lead.notes
             )
 
+        opp_data = opp_data or {}
+        amount = opp_data.get('amount', 0.00)
+        expected_close_date = opp_data.get('expected_close_date')
+        if not expected_close_date:
+            expected_close_date = timezone.now().date() + timedelta(days=30)
+
+        # Find conversion stage of lead's pipeline
+        conversion_stage = None
+        if lead.pipeline:
+            conversion_stage = lead.pipeline.stages.filter(stage_type='CONVERSION').first()
+
         # 3. Create Opportunity
         opp = Opportunity.objects.create(
             name=f"{company.name} - Initial Opportunity",
@@ -144,8 +200,12 @@ class LeadWorkflowService:
             primary_contact=contact,
             assigned_salesperson=lead.assigned_salesperson,
             lead_source=lead.source,
-            expected_close_date=timezone.now().date() + timedelta(days=30),
-            description=lead.notes or ""
+            amount=amount,
+            expected_close_date=expected_close_date,
+            description=lead.notes or "",
+            pipeline=lead.pipeline,
+            pipeline_stage=conversion_stage,
+            custom_values=custom_values
         )
 
         # 4. Link trace-back ForeignKeys on Lead

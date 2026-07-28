@@ -154,18 +154,46 @@ class PipelineViewSet(viewsets.ViewSet):
             if target_stage.stage_type == 'CONVERSION':
                 from leads.services import LeadWorkflowService
                 try:
+                    opp_data = request.data.get('opp_data')
+                    custom_values = request.data.get('custom_values')
                     with transaction.atomic():
                         lead.status = 'QUALIFIED'
                         lead.pipeline_stage = target_stage
                         lead.save()
                         
-                        converted_lead = LeadWorkflowService.convert_lead(lead)
+                        converted_lead = LeadWorkflowService.convert_lead(
+                            lead,
+                            opp_data=opp_data,
+                            custom_values=custom_values
+                        )
                         opportunity = converted_lead.converted_opportunity
                         
                         opportunity.pipeline_stage = target_stage
                         opportunity.pipeline = lead.pipeline
                         opportunity.stage = 'QUALIFICATION'
                         opportunity.save()
+                        
+                        from pipeline.models import PipelineAuditLog
+                        # Log Lead transition
+                        PipelineAuditLog.objects.create(
+                            user=request.user,
+                            lead=lead,
+                            from_stage=current_stage,
+                            to_stage=target_stage,
+                            from_stage_name=current_stage.name if current_stage else 'None',
+                            to_stage_name=target_stage.name,
+                            change_source='DRAG_AND_DROP'
+                        )
+                        # Log Opportunity creation transition
+                        PipelineAuditLog.objects.create(
+                            user=request.user,
+                            opportunity=opportunity,
+                            from_stage=None,
+                            to_stage=target_stage,
+                            from_stage_name='None',
+                            to_stage_name=target_stage.name,
+                            change_source='DRAG_AND_DROP'
+                        )
                         
                     opportunity = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opportunity.pk)
                     contact = opportunity.primary_contact
@@ -197,6 +225,7 @@ class PipelineViewSet(viewsets.ViewSet):
                         status_code=status.HTTP_400_BAD_REQUEST
                     )
             else:
+                from_stage = lead.pipeline_stage
                 lead.pipeline_stage = target_stage
                 if target_stage.stage_type == 'NORMAL_LEAD':
                     if target_stage.order == 0:
@@ -208,6 +237,17 @@ class PipelineViewSet(viewsets.ViewSet):
                 elif target_stage.stage_type == 'LOST':
                     lead.status = 'LOST'
                 lead.save()
+                
+                from pipeline.models import PipelineAuditLog
+                PipelineAuditLog.objects.create(
+                    user=request.user,
+                    lead=lead,
+                    from_stage=from_stage,
+                    to_stage=target_stage,
+                    from_stage_name=from_stage.name if from_stage else 'None',
+                    to_stage_name=target_stage.name,
+                    change_source='DRAG_AND_DROP'
+                )
                 
                 from pipeline.services.query import map_stage_to_enum
                 stage_repr = map_stage_to_enum(target_stage, lead.status)
@@ -290,6 +330,17 @@ class PipelineViewSet(viewsets.ViewSet):
                 opp.stage = 'CLOSED_LOST'
             opp.save()
 
+            from pipeline.models import PipelineAuditLog
+            PipelineAuditLog.objects.create(
+                user=request.user,
+                opportunity=opp,
+                from_stage=current_stage,
+                to_stage=target_stage,
+                from_stage_name=current_stage.name if current_stage else 'None',
+                to_stage_name=target_stage.name,
+                change_source='DRAG_AND_DROP'
+            )
+
             from pipeline.services.query import map_stage_to_enum
             stage_repr = map_stage_to_enum(target_stage, opp.stage)
 
@@ -337,6 +388,53 @@ class PipelineModelViewSet(viewsets.ModelViewSet):
     queryset = Pipeline.objects.all()
     permission_classes = [IsAuthenticated, IsManagerOrAdmin]
 
+    @action(detail=True, methods=['post'], url_path='configure_behavior')
+    def configure_behavior(self, request, pk=None):
+        pipeline = self.get_object()
+        conversion_stage_id = request.data.get('conversion_stage_id')
+        won_stage_id = request.data.get('won_stage_id')
+        lost_stage_id = request.data.get('lost_stage_id')
+
+        if not conversion_stage_id:
+            return api_error(message="conversion_stage_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        from pipeline.services.workflow import PipelineWorkflowService
+        from rest_framework.exceptions import ValidationError
+        try:
+            PipelineWorkflowService.configure_pipeline_behavior(
+                pipeline,
+                conversion_stage_id=int(conversion_stage_id),
+                won_stage_id=int(won_stage_id) if won_stage_id else None,
+                lost_stage_id=int(lost_stage_id) if lost_stage_id else None
+            )
+        except ValidationError as e:
+            msg = e.detail[0] if isinstance(e.detail, list) else str(e)
+            if isinstance(msg, dict):
+                msg = str(msg)
+            return api_error(message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return api_error(message=str(e), status_code=status.HTTP_400_BAD_REQUEST)
+
+        return api_success(message="Pipeline behavior configured successfully.")
+
+    @action(detail=True, methods=['get', 'post'], url_path='form')
+    def manage_form(self, request, pk=None):
+        pipeline = self.get_object()
+        from pipeline.models import CustomForm
+        from pipeline.serializers import CustomFormSerializer
+
+        custom_form, _ = CustomForm.objects.get_or_create(pipeline=pipeline)
+
+        if request.method == 'GET':
+            serializer = CustomFormSerializer(custom_form)
+            return api_success(data=serializer.data)
+        
+        elif request.method == 'POST':
+            serializer = CustomFormSerializer(custom_form, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return api_success(data=serializer.data, message="Custom form configuration saved successfully.")
+
 class PipelineStageViewSet(viewsets.ModelViewSet):
     from pipeline.models import PipelineStage
     from pipeline.serializers import PipelineStageSerializer
@@ -350,55 +448,30 @@ class PipelineStageViewSet(viewsets.ModelViewSet):
             return self.queryset.filter(pipeline_id=pipeline_id)
         return self.queryset
 
+    def perform_create(self, serializer):
+        stage = serializer.save()
+        from pipeline.services.workflow import PipelineWorkflowService
+        PipelineWorkflowService.validate_and_recompute_pipeline_boundaries(stage.pipeline)
+
+    def perform_update(self, serializer):
+        stage = serializer.save()
+        from pipeline.services.workflow import PipelineWorkflowService
+        PipelineWorkflowService.validate_and_recompute_pipeline_boundaries(stage.pipeline)
+
     def destroy(self, request, *args, **kwargs):
         stage = self.get_object()
-        from leads.models import Lead
-        from opportunities.models import Opportunity
-        from pipeline.models import PipelineStage
+        reassign_stage_id = request.data.get('reassign_stage_id') or request.query_params.get('reassign_stage_id')
+        if reassign_stage_id:
+            reassign_stage_id = int(reassign_stage_id)
 
-        # Validation Rule: check if there are active cards in the stage
-        active_leads = Lead.objects.filter(pipeline_stage=stage, is_converted=False).count()
-        active_opps = Opportunity.objects.filter(pipeline_stage=stage).count()
+        from pipeline.services.workflow import PipelineWorkflowService
+        from rest_framework.exceptions import ValidationError
+        try:
+            PipelineWorkflowService.soft_delete_stage(stage, reassign_stage_id)
+        except ValidationError as e:
+            msg = e.detail[0] if isinstance(e.detail, list) else str(e)
+            if isinstance(msg, dict):
+                msg = str(msg)
+            return api_error(message=str(msg), status_code=status.HTTP_400_BAD_REQUEST)
 
-        if active_leads > 0 or active_opps > 0:
-            reassign_stage_id = request.data.get('reassign_stage_id') or request.query_params.get('reassign_stage_id')
-            if not reassign_stage_id:
-                return api_error(
-                    message="Cannot delete stage containing active cards. Please provide a reassign_stage_id.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-            
-            try:
-                reassign_stage = PipelineStage.objects.get(pk=reassign_stage_id, pipeline=stage.pipeline)
-            except PipelineStage.DoesNotExist:
-                return api_error(
-                    message="Reassignment stage does not exist or belongs to a different pipeline.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Move active cards to reassignment stage
-            Lead.objects.filter(pipeline_stage=stage).update(pipeline_stage=reassign_stage)
-            Opportunity.objects.filter(pipeline_stage=stage).update(pipeline_stage=reassign_stage)
-
-        # Deletion constraints for stage types:
-        if stage.stage_type == 'WON':
-            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='WON').count() <= 1:
-                return api_error(
-                    message="Cannot delete the only WON stage of the pipeline.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-        elif stage.stage_type == 'CONVERSION':
-            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='CONVERSION').count() <= 1:
-                return api_error(
-                    message="Cannot delete the only CONVERSION stage of the pipeline.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-        elif stage.stage_type == 'LOST':
-            if PipelineStage.objects.filter(pipeline=stage.pipeline, stage_type='LOST').count() <= 1:
-                return api_error(
-                    message="Cannot delete the last LOST stage of the pipeline.",
-                    status_code=status.HTTP_400_BAD_REQUEST
-                )
-
-        stage.delete()
-        return api_success(message="Stage deleted successfully.")
+        return api_success(message="Stage soft deleted successfully.")

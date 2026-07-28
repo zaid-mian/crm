@@ -157,7 +157,10 @@ class LeadViewSet(
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrSalesManager])
     def convert(self, request, pk=None):
         lead = self.get_object()
-        lead = LeadWorkflowService.convert_lead(lead)
+        opp_data = request.data.get('opp_data')
+        custom_values = request.data.get('custom_values')
+        
+        lead = LeadWorkflowService.convert_lead(lead, opp_data=opp_data, custom_values=custom_values)
 
         return api_success(
             data={
