@@ -73,6 +73,7 @@ class Opportunity(models.Model):
     lead_source = models.CharField(max_length=50, blank=True, default='')
     description = models.TextField(blank=True, default='')
     lost_reason = models.CharField(max_length=255, blank=True, default='')
+    custom_values = models.JSONField(default=dict, blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
