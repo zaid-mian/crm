@@ -157,44 +157,15 @@ class PipelineViewSet(viewsets.ViewSet):
                     opp_data = request.data.get('opp_data')
                     custom_values = request.data.get('custom_values')
                     with transaction.atomic():
-                        lead.status = 'QUALIFIED'
-                        lead.pipeline_stage = target_stage
-                        lead.save()
-                        
                         converted_lead = LeadWorkflowService.convert_lead(
                             lead,
                             opp_data=opp_data,
-                            custom_values=custom_values
+                            custom_values=custom_values,
+                            user=request.user,
+                            change_source='DRAG_AND_DROP'
                         )
                         opportunity = converted_lead.converted_opportunity
-                        
-                        opportunity.pipeline_stage = target_stage
-                        opportunity.pipeline = lead.pipeline
-                        opportunity.stage = 'QUALIFICATION'
-                        opportunity.save()
-                        
-                        from pipeline.models import PipelineAuditLog
-                        # Log Lead transition
-                        PipelineAuditLog.objects.create(
-                            user=request.user,
-                            lead=lead,
-                            from_stage=current_stage,
-                            to_stage=target_stage,
-                            from_stage_name=current_stage.name if current_stage else 'None',
-                            to_stage_name=target_stage.name,
-                            change_source='DRAG_AND_DROP'
-                        )
-                        # Log Opportunity creation transition
-                        PipelineAuditLog.objects.create(
-                            user=request.user,
-                            opportunity=opportunity,
-                            from_stage=None,
-                            to_stage=target_stage,
-                            from_stage_name='None',
-                            to_stage_name=target_stage.name,
-                            change_source='DRAG_AND_DROP'
-                        )
-                        
+
                     opportunity = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opportunity.pk)
                     contact = opportunity.primary_contact
                     card_data = {
@@ -225,55 +196,45 @@ class PipelineViewSet(viewsets.ViewSet):
                         status_code=status.HTTP_400_BAD_REQUEST
                     )
             else:
-                from_stage = lead.pipeline_stage
-                lead.pipeline_stage = target_stage
-                if target_stage.stage_type == 'NORMAL_LEAD':
-                    if target_stage.order == 0:
-                        lead.status = 'NEW'
-                    elif target_stage.order == 1:
-                        lead.status = 'CONTACTED'
-                    else:
-                        lead.status = 'FOLLOW_UP'
-                elif target_stage.stage_type == 'LOST':
-                    lead.status = 'LOST'
-                lead.save()
-                
-                from pipeline.models import PipelineAuditLog
-                PipelineAuditLog.objects.create(
-                    user=request.user,
-                    lead=lead,
-                    from_stage=from_stage,
-                    to_stage=target_stage,
-                    from_stage_name=from_stage.name if from_stage else 'None',
-                    to_stage_name=target_stage.name,
-                    change_source='DRAG_AND_DROP'
-                )
-                
-                from pipeline.services.query import map_stage_to_enum
-                stage_repr = map_stage_to_enum(target_stage, lead.status)
-                
-                card_data = {
-                    "entity_type": "lead",
-                    "id": lead.id,
-                    "name": lead.full_name,
-                    "company_name": lead.company_name,
-                    "phone": lead.phone or '',
-                    "email": lead.email or '',
-                    "assigned_salesperson_id": lead.assigned_salesperson_id,
-                    "assigned_salesperson_name": lead.assigned_salesperson.username if lead.assigned_salesperson else None,
-                    "stage": stage_repr,
-                    "amount": None,
-                    "expected_close_date": None,
-                    "probability": None,
-                    "notes": lead.notes or '',
-                    "company_id": None,
-                    "primary_contact_id": None,
-                    "pipeline_stage_id": lead.pipeline_stage_id
-                }
-                return api_success(
-                    data=card_data,
-                    message="Lead stage updated successfully."
-                )
+                from leads.services import LeadWorkflowService
+                try:
+                    lead = LeadWorkflowService.update_lead_stage(
+                        lead=lead,
+                        target_stage=target_stage,
+                        user=request.user,
+                        change_source='DRAG_AND_DROP'
+                    )
+                    
+                    from pipeline.services.query import map_stage_to_enum
+                    stage_repr = map_stage_to_enum(target_stage, lead.status)
+                    
+                    card_data = {
+                        "entity_type": "lead",
+                        "id": lead.id,
+                        "name": lead.full_name,
+                        "company_name": lead.company_name,
+                        "phone": lead.phone or '',
+                        "email": lead.email or '',
+                        "assigned_salesperson_id": lead.assigned_salesperson_id,
+                        "assigned_salesperson_name": lead.assigned_salesperson.username if lead.assigned_salesperson else None,
+                        "stage": stage_repr,
+                        "amount": None,
+                        "expected_close_date": None,
+                        "probability": None,
+                        "notes": lead.notes or '',
+                        "company_id": None,
+                        "primary_contact_id": None,
+                        "pipeline_stage_id": lead.pipeline_stage_id
+                    }
+                    return api_success(
+                        data=card_data,
+                        message="Lead stage updated successfully."
+                    )
+                except Exception as e:
+                    return api_error(
+                        message=str(e),
+                        status_code=status.HTTP_400_BAD_REQUEST
+                    )
 
         elif entity_type == 'opportunity':
             try:
@@ -316,58 +277,47 @@ class PipelineViewSet(viewsets.ViewSet):
                 )
 
             # Map stage and save
-            opp.pipeline_stage = target_stage
-            if target_stage.stage_type == 'CONVERSION':
-                opp.stage = 'QUALIFICATION'
-            elif target_stage.stage_type == 'NORMAL_OPPORTUNITY':
-                if target_stage.order == 4:
-                    opp.stage = 'PROPOSAL'
-                else:
-                    opp.stage = 'NEGOTIATION'
-            elif target_stage.stage_type == 'WON':
-                opp.stage = 'CLOSED_WON'
-            elif target_stage.stage_type == 'LOST':
-                opp.stage = 'CLOSED_LOST'
-            opp.save()
+            from opportunities.services import OpportunityWorkflowService
+            try:
+                opp = OpportunityWorkflowService.update_opportunity_stage(
+                    opportunity=opp,
+                    target_stage=target_stage,
+                    user=request.user,
+                    change_source='DRAG_AND_DROP'
+                )
 
-            from pipeline.models import PipelineAuditLog
-            PipelineAuditLog.objects.create(
-                user=request.user,
-                opportunity=opp,
-                from_stage=current_stage,
-                to_stage=target_stage,
-                from_stage_name=current_stage.name if current_stage else 'None',
-                to_stage_name=target_stage.name,
-                change_source='DRAG_AND_DROP'
-            )
+                from pipeline.services.query import map_stage_to_enum
+                stage_repr = map_stage_to_enum(target_stage, opp.stage)
 
-            from pipeline.services.query import map_stage_to_enum
-            stage_repr = map_stage_to_enum(target_stage, opp.stage)
-
-            opp = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opp.pk)
-            contact = opp.primary_contact
-            card_data = {
-                "entity_type": "opportunity",
-                "id": opp.id,
-                "name": contact.full_name if contact else '',
-                "company_name": opp.company.name if opp.company else '',
-                "phone": (contact.phone_number if contact else '') or '',
-                "email": (contact.email if contact else '') or '',
-                "assigned_salesperson_id": opp.assigned_salesperson_id,
-                "assigned_salesperson_name": opp.assigned_salesperson.username if opp.assigned_salesperson else None,
-                "stage": stage_repr,
-                "amount": opp.amount,
-                "expected_close_date": opp.expected_close_date,
-                "probability": opp.probability,
-                "notes": opp.description or '',
-                "company_id": opp.company_id,
-                "primary_contact_id": opp.primary_contact_id,
-                "pipeline_stage_id": opp.pipeline_stage_id
-            }
-            return api_success(
-                data=card_data,
-                message="Opportunity stage updated successfully."
-            )
+                opp = Opportunity.objects.select_related('assigned_salesperson', 'primary_contact', 'company').get(pk=opp.pk)
+                contact = opp.primary_contact
+                card_data = {
+                    "entity_type": "opportunity",
+                    "id": opp.id,
+                    "name": contact.full_name if contact else '',
+                    "company_name": opp.company.name if opp.company else '',
+                    "phone": (contact.phone_number if contact else '') or '',
+                    "email": (contact.email if contact else '') or '',
+                    "assigned_salesperson_id": opp.assigned_salesperson_id,
+                    "assigned_salesperson_name": opp.assigned_salesperson.username if opp.assigned_salesperson else None,
+                    "stage": stage_repr,
+                    "amount": opp.amount,
+                    "expected_close_date": opp.expected_close_date,
+                    "probability": opp.probability,
+                    "notes": opp.description or '',
+                    "company_id": opp.company_id,
+                    "primary_contact_id": opp.primary_contact_id,
+                    "pipeline_stage_id": opp.pipeline_stage_id
+                }
+                return api_success(
+                    data=card_data,
+                    message="Opportunity stage updated successfully."
+                )
+            except Exception as e:
+                return api_error(
+                    message=str(e),
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
         else:
             return api_error(
                 message="Invalid entity_type. Must be 'lead' or 'opportunity'.",

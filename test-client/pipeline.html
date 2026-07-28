@@ -115,6 +115,40 @@
         </div>
     </div>
 
+    <!-- Lead Conversion Modal -->
+    <div class="modal fade" id="conversionModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="conversionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title font-weight-semibold" id="conversionModalLabel">💼 Convert Lead to Opportunity</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeConversionModalBtn"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="conversionAlertContainer" class="mb-3"></div>
+                    <form id="conversionForm">
+                        <div class="mb-3">
+                            <label for="convOppAmount" class="form-label font-weight-medium">Deal Amount ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="convOppAmount" value="0.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convOppCloseDate" class="form-label font-weight-medium">Expected Close Date</label>
+                            <input type="date" class="form-control" id="convOppCloseDate" required>
+                        </div>
+                        
+                        <!-- Container to dynamically render custom opportunity fields -->
+                        <div id="dynamicFormFieldsContainer" class="border-top pt-3 mt-3">
+                            <!-- Fields populated via JS -->
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-outline-secondary" id="cancelConversionBtn">Cancel</button>
+                    <button type="button" class="btn btn-success" id="confirmConversionBtn">Convert & Create Opportunity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- SortableJS Library CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     

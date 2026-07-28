@@ -248,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
         `;
 
+        let drawerStages = [...activeStages];
+
         const pipelineInput = document.getElementById('edit_pipeline');
         const stageInput = document.getElementById('edit_lead_stage');
         if (pipelineInput && stageInput) {
@@ -262,6 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         stages = stagesRes.data || [];
                     }
                     stages.sort((a, b) => a.order - b.order);
+                    drawerStages = stages;
                     
                     const compStages = stages.filter(s => s.entity_type === 'LEAD' || s.stage_type === 'CONVERSION' || s.stage_type === 'LOST');
                     stageInput.innerHTML = compStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
@@ -281,6 +284,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const newStageId = parseInt(document.getElementById('edit_lead_stage').value);
             const salespersonVal = document.getElementById('edit_assigned_salesperson').value;
             const newSalesperson = salespersonVal ? parseInt(salespersonVal) : null;
+
+            // Intercept conversion stage transition
+            const targetStageObj = drawerStages.find(x => x.id === newStageId);
+            if (targetStageObj && targetStageObj.stage_type === 'CONVERSION') {
+                bsDrawer.hide();
+                await openConversionModal(lead.id, newStageId);
+                return;
+            }
 
             const payload = {
                 full_name: document.getElementById('edit_full_name').value.trim(),
@@ -391,6 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
         `;
 
+        let drawerStages = [...activeStages];
+
         const pipelineInput = document.getElementById('edit_opp_pipeline');
         const stageSelect = document.getElementById('edit_opp_stage_select');
         const lostReasonGroup = document.getElementById('lostReasonGroup');
@@ -417,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         stages = stagesRes.data || [];
                     }
                     stages.sort((a, b) => a.order - b.order);
+                    drawerStages = stages;
                     
                     const compStages = stages.filter(s => s.entity_type === 'OPPORTUNITY' || s.stage_type === 'CONVERSION');
                     stageSelect.innerHTML = compStages.map(s => `<option value="${s.id}" data-type="${s.stage_type}">${s.name}</option>`).join('');
@@ -655,6 +669,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             const entityType = itemEl.dataset.type;
                             const idVal = itemEl.dataset.id;
+                            const targetStageObj = activeStages.find(x => x.id === targetStageId);
+
+                            if (entityType === 'lead' && targetStageObj && targetStageObj.stage_type === 'CONVERSION') {
+                                await openConversionModal(parseInt(idVal), targetStageId);
+                                return;
+                            }
 
                             try {
                                 const moveResponse = await APIClient.post('/api/pipeline/move/', {
@@ -673,12 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     countBadges[targetStageId].textContent = targetList.children.length;
 
                                     UIUtils.showAlert('mainAlertContainer', 'Card moved successfully.');
-                                    
-                                    // If drop triggered lead -> opp conversion, reload board layout to place opportunity cards
-                                    const targetStageObj = activeStages.find(x => x.id === targetStageId);
-                                    if (entityType === 'lead' && targetStageObj && targetStageObj.stage_type === 'CONVERSION') {
-                                        loadPipeline();
-                                    }
                                 }
                             } catch (error) {
                                 UIUtils.showAlert('mainAlertContainer', error.message || 'Failed to move card.', 'danger');
@@ -696,6 +710,213 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // ==========================================
+    // --- Lead Conversion Modal Controllers ---
+    // ==========================================
+    const conversionModalEl = document.getElementById('conversionModal');
+    const bsConversionModal = new bootstrap.Modal(conversionModalEl);
+    const cancelConversionBtn = document.getElementById('cancelConversionBtn');
+    const confirmConversionBtn = document.getElementById('confirmConversionBtn');
+    const closeConversionModalBtn = document.getElementById('closeConversionModalBtn');
+    const dynamicFormFieldsContainer = document.getElementById('dynamicFormFieldsContainer');
+    const convOppAmount = document.getElementById('convOppAmount');
+    const convOppCloseDate = document.getElementById('convOppCloseDate');
+    const conversionAlertContainer = document.getElementById('conversionAlertContainer');
+
+    let activeConversionLeadId = null;
+    let activeConversionTargetStageId = null;
+
+    async function openConversionModal(leadId, targetStageId) {
+        activeConversionLeadId = leadId;
+        activeConversionTargetStageId = targetStageId;
+        conversionAlertContainer.innerHTML = '';
+        
+        // Reset defaults
+        convOppAmount.value = "0.00";
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 30);
+        convOppCloseDate.value = defaultDate.toISOString().substring(0, 10);
+
+        dynamicFormFieldsContainer.innerHTML = '<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Checking custom form fields...</div>';
+        
+        try {
+            const formRes = await APIClient.get(`/api/pipelines/${activePipelineId}/form/`);
+            const formData = formRes.data || formRes;
+            dynamicFormFieldsContainer.innerHTML = '';
+
+            if (formData && formData.is_active && formData.fields && formData.fields.length > 0) {
+                const title = document.createElement('h6');
+                title.className = 'small text-uppercase fw-bold text-secondary mb-3';
+                title.textContent = 'Custom Opportunity Information';
+                dynamicFormFieldsContainer.appendChild(title);
+
+                formData.fields.sort((a, b) => a.order - b.order).forEach(field => {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'mb-3';
+                    
+                    const label = document.createElement('label');
+                    label.className = 'form-label font-weight-medium small';
+                    label.innerHTML = `${field.label} ${field.required ? '<span class="text-danger">*</span>' : ''}`;
+                    fieldDiv.appendChild(label);
+
+                    let input;
+                    if (field.field_type === 'TEXT') {
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control custom-form-field-input';
+                    } else if (field.field_type === 'TEXTAREA') {
+                        input = document.createElement('textarea');
+                        input.className = 'form-control custom-form-field-input';
+                        input.rows = 2;
+                    } else if (field.field_type === 'NUMBER') {
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.step = 'any';
+                        input.className = 'form-control custom-form-field-input';
+                    } else if (field.field_type === 'DATE') {
+                        input = document.createElement('input');
+                        input.type = 'date';
+                        input.className = 'form-control custom-form-field-input';
+                    } else if (field.field_type === 'CHECKBOX') {
+                        const checkDiv = document.createElement('div');
+                        checkDiv.className = 'form-check';
+                        
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.className = 'form-check-input custom-form-field-input';
+                        input.id = `chk-${field.id}`;
+                        
+                        const checkLabel = document.createElement('label');
+                        checkLabel.className = 'form-check-label small text-muted';
+                        checkLabel.htmlFor = `chk-${field.id}`;
+                        checkLabel.textContent = 'Enable option';
+
+                        checkDiv.appendChild(input);
+                        checkDiv.appendChild(checkLabel);
+                        fieldDiv.appendChild(checkDiv);
+                    } else if (field.field_type === 'DROPDOWN') {
+                        input = document.createElement('select');
+                        input.className = 'form-select custom-form-field-input';
+                        input.innerHTML = `<option value="">Choose option...</option>`;
+                        if (field.options && field.options.length) {
+                            field.options.forEach(opt => {
+                                const o = document.createElement('option');
+                                o.value = opt;
+                                o.textContent = opt;
+                                input.appendChild(o);
+                            });
+                        }
+                    }
+
+                    if (input) {
+                        input.dataset.label = field.label;
+                        input.dataset.required = field.required;
+                        input.dataset.type = field.field_type;
+                        if (field.field_type !== 'CHECKBOX') {
+                            fieldDiv.appendChild(input);
+                        }
+                    }
+
+                    dynamicFormFieldsContainer.appendChild(fieldDiv);
+                });
+            } else {
+                dynamicFormFieldsContainer.innerHTML = '<p class="text-muted small">No custom fields configured for this opportunity type.</p>';
+            }
+        } catch (e) {
+            console.error("Failed to check custom form fields:", e);
+            dynamicFormFieldsContainer.innerHTML = '<p class="text-danger small">Error loading custom fields. Defaulting to standard form.</p>';
+        }
+
+        bsConversionModal.show();
+    }
+
+    confirmConversionBtn.addEventListener('click', async () => {
+        const amount = parseFloat(convOppAmount.value);
+        if (isNaN(amount) || amount < 0) {
+            UIUtils.showAlert('conversionAlertContainer', 'Deal amount must be a positive number.', 'danger');
+            return;
+        }
+        const closeDate = convOppCloseDate.value;
+        if (!closeDate) {
+            UIUtils.showAlert('conversionAlertContainer', 'Expected close date is required.', 'danger');
+            return;
+        }
+
+        const customValues = {};
+        const inputs = dynamicFormFieldsContainer.querySelectorAll('.custom-form-field-input');
+        let validationError = null;
+
+        for (const input of inputs) {
+            const label = input.dataset.label;
+            const required = input.dataset.required === 'true';
+            const type = input.dataset.type;
+            
+            let val;
+            if (type === 'CHECKBOX') {
+                val = input.checked;
+            } else {
+                val = input.value.trim();
+            }
+
+            if (required && (val === '' || val === null || val === undefined)) {
+                validationError = `Field "${label}" is required.`;
+                break;
+            }
+
+            if (val !== '') {
+                if (type === 'NUMBER') {
+                    const parsedNum = parseFloat(val);
+                    if (isNaN(parsedNum)) {
+                        validationError = `Field "${label}" must be a valid number.`;
+                        break;
+                    }
+                    val = parsedNum;
+                }
+            }
+            customValues[label] = val;
+        }
+
+        if (validationError) {
+            UIUtils.showAlert('conversionAlertContainer', validationError, 'danger');
+            return;
+        }
+
+        confirmConversionBtn.disabled = true;
+        confirmConversionBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Converting...';
+
+        try {
+            const response = await APIClient.post('/api/pipeline/move/', {
+                entity_type: "lead",
+                id: activeConversionLeadId,
+                target_stage_id: activeConversionTargetStageId,
+                opp_data: {
+                    amount: amount,
+                    expected_close_date: closeDate
+                },
+                custom_values: customValues
+            });
+
+            if (response) {
+                bsConversionModal.hide();
+                UIUtils.showAlert('mainAlertContainer', 'Lead converted to Opportunity successfully.');
+                await loadPipeline();
+            }
+        } catch (e) {
+            console.error("Conversion failed:", e);
+            UIUtils.showAlert('conversionAlertContainer', e.message || 'Conversion failed.', 'danger');
+        } finally {
+            confirmConversionBtn.disabled = false;
+            confirmConversionBtn.textContent = 'Convert & Create Opportunity';
+        }
+    });
+
+    function cancelConversion() {
+        bsConversionModal.hide();
+        loadPipeline();
+    }
+    cancelConversionBtn.addEventListener('click', cancelConversion);
+    closeConversionModalBtn.addEventListener('click', cancelConversion);
 
     // --- Init ---
     (async () => {

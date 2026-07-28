@@ -98,7 +98,7 @@ class LeadWorkflowService:
 
     @staticmethod
     @transaction.atomic
-    def convert_lead(lead: Lead, opp_data=None, custom_values=None) -> Lead:
+    def convert_lead(lead: Lead, opp_data=None, custom_values=None, user=None, change_source='API') -> Lead:
         from datetime import timedelta
         from contacts.models import Contact
         from opportunities.models import Opportunity
@@ -108,6 +108,9 @@ class LeadWorkflowService:
 
         custom_values = custom_values or {}
         LeadWorkflowService.validate_custom_values(lead.pipeline, custom_values)
+
+        old_stage = lead.pipeline_stage
+        old_pipeline = lead.pipeline
 
         # 1. Find Company by name__iexact
         c_name = lead.company_name.strip()
@@ -215,8 +218,69 @@ class LeadWorkflowService:
         lead.converted_company = company
         lead.converted_contact = contact
         lead.converted_opportunity = opp
+        if conversion_stage:
+            lead.pipeline_stage = conversion_stage
         lead.save()
 
+        # 5. Create Audit Logs
+        from pipeline.models import PipelineAuditLog
+        PipelineAuditLog.objects.create(
+            user=user,
+            lead=lead,
+            from_stage=old_stage,
+            to_stage=conversion_stage,
+            from_stage_name=old_stage.name if old_stage else 'None',
+            to_stage_name=conversion_stage.name if conversion_stage else 'None',
+            change_source=change_source
+        )
+        PipelineAuditLog.objects.create(
+            user=user,
+            opportunity=opp,
+            from_stage=None,
+            to_stage=conversion_stage,
+            from_stage_name='None',
+            to_stage_name=conversion_stage.name if conversion_stage else 'None',
+            change_source=change_source
+        )
+
+        return lead
+
+    @staticmethod
+    @transaction.atomic
+    def update_lead_stage(lead: Lead, target_stage, user=None, change_source='API') -> Lead:
+        old_stage = lead.pipeline_stage
+        old_pipeline = lead.pipeline
+
+        # Rule 3: Pipeline switching must never silently convert Lead ↔ Opportunity
+        if target_stage.entity_type == 'OPPORTUNITY' and target_stage.stage_type not in ['CONVERSION', 'LOST']:
+            raise ValidationError("Leads can only be moved to Lead-compatible stages.")
+
+        lead.pipeline_stage = target_stage
+        lead.pipeline = target_stage.pipeline
+        
+        if target_stage.stage_type == 'NORMAL_LEAD':
+            if target_stage.order == 0:
+                lead.status = 'NEW'
+            elif target_stage.order == 1:
+                lead.status = 'CONTACTED'
+            else:
+                lead.status = 'FOLLOW_UP'
+        elif target_stage.stage_type == 'LOST':
+            lead.status = 'LOST'
+        
+        lead.save()
+
+        if old_stage != target_stage or old_pipeline != target_stage.pipeline:
+            from pipeline.models import PipelineAuditLog
+            PipelineAuditLog.objects.create(
+                user=user,
+                lead=lead,
+                from_stage=old_stage,
+                to_stage=target_stage,
+                from_stage_name=old_stage.name if old_stage else 'None',
+                to_stage_name=target_stage.name,
+                change_source=change_source
+            )
         return lead
 
     @staticmethod

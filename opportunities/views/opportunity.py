@@ -96,9 +96,26 @@ class OpportunityViewSet(
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        
+        old_stage = instance.pipeline_stage
+        old_pipeline = instance.pipeline
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        
+        from django.db import transaction
+        with transaction.atomic():
+            self.perform_update(serializer)
+            instance.refresh_from_db()
+            
+            if old_stage != instance.pipeline_stage or old_pipeline != instance.pipeline:
+                from opportunities.services import OpportunityWorkflowService
+                OpportunityWorkflowService.update_opportunity_stage(
+                    opportunity=instance,
+                    target_stage=instance.pipeline_stage,
+                    user=request.user,
+                    change_source='DETAIL_DRAWER' if 'test-client' in request.META.get('HTTP_REFERER', '') else 'API'
+                )
         return api_success(data=serializer.data, message="Opportunity updated successfully.")
 
     # Custom Action: Change Stage

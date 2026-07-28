@@ -124,9 +124,24 @@ class LeadViewSet(
         if instance.is_converted:
             return api_error("Converted leads are read-only and cannot be modified.")
 
+        old_stage = instance.pipeline_stage
+        old_pipeline = instance.pipeline
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        
+        from django.db import transaction
+        with transaction.atomic():
+            self.perform_update(serializer)
+            instance.refresh_from_db()
+            
+            if old_stage != instance.pipeline_stage or old_pipeline != instance.pipeline:
+                LeadWorkflowService.update_lead_stage(
+                    lead=instance,
+                    target_stage=instance.pipeline_stage,
+                    user=request.user,
+                    change_source='DETAIL_DRAWER' if 'test-client' in request.META.get('HTTP_REFERER', '') else 'API'
+                )
         return api_success(
             data=serializer.data,
             message="Lead updated successfully."
@@ -160,7 +175,13 @@ class LeadViewSet(
         opp_data = request.data.get('opp_data')
         custom_values = request.data.get('custom_values')
         
-        lead = LeadWorkflowService.convert_lead(lead, opp_data=opp_data, custom_values=custom_values)
+        lead = LeadWorkflowService.convert_lead(
+            lead,
+            opp_data=opp_data,
+            custom_values=custom_values,
+            user=request.user,
+            change_source='DETAIL_DRAWER' if 'test-client' in request.META.get('HTTP_REFERER', '') else 'API'
+        )
 
         return api_success(
             data={
