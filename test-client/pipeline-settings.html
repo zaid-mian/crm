@@ -29,6 +29,50 @@
             vertical-align: middle;
             border: 1px solid rgba(0,0,0,0.15);
         }
+
+        /* Wizard Stepper Styling */
+        .stepper-wrapper {
+            margin-bottom: 2rem;
+        }
+        .stepper-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex-grow: 1;
+            text-align: center;
+        }
+        .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .stepper-item.active .step-circle {
+            background-color: #0d6efd;
+            transform: scale(1.15);
+            box-shadow: 0 0 8px rgba(13,110,253,0.4);
+        }
+        .stepper-item.completed .step-circle {
+            background-color: #198754;
+        }
+        .step-label {
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        .stepper-item.active .step-label {
+            color: #0d6efd !important;
+            font-weight: 600;
+        }
+        .stepper-item.completed .step-label {
+            color: #198754 !important;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -77,7 +121,10 @@
                 <div class="card settings-card p-4 bg-white">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="card-title font-weight-bold mb-0">Stages Configuration</h5>
-                        <button class="btn btn-success" id="addStageBtn">+ Add New Stage</button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" id="openWizardBtn">✨ Pipeline Setup Wizard</button>
+                            <button class="btn btn-success" id="addStageBtn">+ Add New Stage</button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -145,54 +192,6 @@
                 <div class="mb-3">
                     <label for="stageNameInput" class="form-label font-weight-medium">Stage Name</label>
                     <input type="text" class="form-control" id="stageNameInput" required placeholder="e.g. Qualified">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label font-weight-medium">Stage Behavior</label>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorLead" value="NORMAL_LEAD" checked>
-                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorLead">
-                            Lead Stage
-                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Normal stage while the customer is still a lead.</div>
-                        </label>
-                    </div>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorConversion" value="CONVERSION">
-                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorConversion">
-                            Conversion Stage
-                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">When a card enters this stage it automatically becomes an Opportunity.</div>
-                        </label>
-                    </div>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorOpportunity" value="NORMAL_OPPORTUNITY">
-                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorOpportunity">
-                            Opportunity Stage
-                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Normal stage after conversion.</div>
-                        </label>
-                    </div>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorWon" value="WON">
-                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorWon">
-                            Won Stage
-                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Final successful stage.</div>
-                        </label>
-                    </div>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="stageBehavior" id="behaviorLost" value="LOST">
-                        <label class="form-check-label text-dark font-weight-semibold" for="behaviorLost">
-                            Lost Stage
-                            <div class="text-muted small font-weight-normal mt-0.5" style="font-size: 0.8rem;">Final unsuccessful stage.</div>
-                        </label>
-                    </div>
-
-                    <div class="form-text text-muted small mt-2">
-                        Cards stay as Leads until they enter the Conversion Stage. After that, they automatically become Opportunities.
-                    </div>
-                </div>
                 <div class="mb-3">
                     <label for="stageOrderInput" class="form-label font-weight-medium">Sort Order</label>
                     <input type="number" class="form-control" id="stageOrderInput" required min="0" placeholder="e.g. 0">
@@ -232,6 +231,236 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-danger" id="confirmReassignDeleteBtn">Reassign and Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Setup Wizard Modal -->
+    <div class="modal fade" id="wizardModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="wizardModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-dark text-white py-3">
+                    <h5 class="modal-title font-weight-semibold" id="wizardModalLabel">✨ Pipeline Setup Wizard</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="closeWizardModalBtn"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Stepper Progress Tracker -->
+                    <div class="d-flex justify-content-between mb-4 position-relative stepper-wrapper">
+                        <div class="position-absolute top-50 start-0 translate-y-50 w-100 bg-secondary-subtle" style="height: 3px; z-index: 1;"></div>
+                        <div class="position-absolute top-50 start-0 translate-y-50 bg-primary" id="wizardProgressLine" style="height: 3px; z-index: 2; width: 0%; transition: width 0.3s ease;"></div>
+                        
+                        <div class="stepper-item active" data-step="1" style="z-index: 3;">
+                            <div class="step-circle bg-primary text-white">1</div>
+                            <span class="step-label text-muted small mt-1">Stages</span>
+                        </div>
+                        <div class="stepper-item" data-step="2" style="z-index: 3;">
+                            <div class="step-circle bg-secondary text-white">2</div>
+                            <span class="step-label text-muted small mt-1">Conversion</span>
+                        </div>
+                        <div class="stepper-item" data-step="3" style="z-index: 3;">
+                            <div class="step-circle bg-secondary text-white">3</div>
+                            <span class="step-label text-muted small mt-1">Won/Lost</span>
+                        </div>
+                        <div class="stepper-item" data-step="4" style="z-index: 3;">
+                            <div class="step-circle bg-secondary text-white">4</div>
+                            <span class="step-label text-muted small mt-1">Form</span>
+                        </div>
+                        <div class="stepper-item" data-step="5" style="z-index: 3;">
+                            <div class="step-circle bg-secondary text-white">5</div>
+                            <span class="step-label text-muted small mt-1">Review</span>
+                        </div>
+                    </div>
+
+                    <!-- Alert message container -->
+                    <div id="wizardAlertContainer" class="mb-3"></div>
+
+                    <!-- Steps Content Containers -->
+                    <!-- STEP 1: Stages -->
+                    <div class="wizard-step-panel" id="stepPanel1">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 1: Create & Reorder Pipeline Stages</h6>
+                        <p class="text-muted small">Design your pipeline stages. Use Up/Down arrows to sequence the flow from left to right.</p>
+                        
+                        <div class="list-group mb-3" id="wizardStagesList" style="max-height: 250px; overflow-y: auto;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                        
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="newWizardStageName" placeholder="Add custom stage name (e.g. Follow Up)">
+                            <input type="color" class="form-control form-control-color border-start-0" id="newWizardStageColor" value="#0d6efd" style="width: 45px;">
+                            <button class="btn btn-success" type="button" id="addWizardStageBtn">+ Add Stage</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Conversion point -->
+                    <div class="wizard-step-panel d-none" id="stepPanel2">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 2: Conversion Point Selection</h6>
+                        <p class="text-muted small">Select the stage where a <strong>Lead</strong> transitions into an active sales <strong>Opportunity</strong>. (Example: When a client books a Demo/Meeting).</p>
+                        
+                        <div class="mb-3 card p-3 bg-light border-0">
+                            <label for="wizardConversionStageSelect" class="form-label font-weight-medium text-dark">Where does a Lead become an Opportunity?</label>
+                            <select class="form-select form-select-lg" id="wizardConversionStageSelect">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Won/Lost stages -->
+                    <div class="wizard-step-panel d-none" id="stepPanel3">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 3: Won / Lost Target Stages (Optional)</h6>
+                        <p class="text-muted small">Configure which stages represent closed deals. You can skip these if they do not apply to this pipeline.</p>
+                        
+                        <!-- Won Stage Toggle -->
+                        <div class="card p-3 mb-3 border-0 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-semibold text-dark">Does this pipeline have a Won stage?</span>
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="hasWonRadio" id="hasWonYes" value="yes" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="hasWonYes">Yes</label>
+                                    <input type="radio" class="btn-check" name="hasWonRadio" id="hasWonNo" value="no">
+                                    <label class="btn btn-outline-primary btn-sm" for="hasWonNo">No</label>
+                                </div>
+                            </div>
+                            <div class="mb-2" id="wonStageDropdownWrapper">
+                                <label for="wizardWonStageSelect" class="form-label small text-secondary">Select the Won stage:</label>
+                                <select class="form-select" id="wizardWonStageSelect">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Lost Stage Toggle -->
+                        <div class="card p-3 border-0 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-semibold text-dark">Does this pipeline have a Lost stage?</span>
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="hasLostRadio" id="hasLostYes" value="yes" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="hasLostYes">Yes</label>
+                                    <input type="radio" class="btn-check" name="hasLostRadio" id="hasLostNo" value="no">
+                                    <label class="btn btn-outline-primary btn-sm" for="hasLostNo">No</label>
+                                </div>
+                            </div>
+                            <div class="mb-2" id="lostStageDropdownWrapper">
+                                <label for="wizardLostStageSelect" class="form-label small text-secondary">Select the Lost stage:</label>
+                                <select class="form-select" id="wizardLostStageSelect">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: Opportunity Custom Form Builder -->
+                    <div class="wizard-step-panel d-none" id="stepPanel4">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 4: Opportunity Conversion Form Fields</h6>
+                        <p class="text-muted small">Define required or optional fields to collect when a Lead converts into an Opportunity (e.g. Budget, Requirements, Start Date).</p>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="wizardEnableFormToggle" checked>
+                            <label class="form-check-label fw-semibold text-dark" for="wizardEnableFormToggle">Enable custom conversion form fields</label>
+                        </div>
+
+                        <div id="wizardFormBuilderWorkspace">
+                            <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead class="table-light text-secondary small">
+                                        <tr>
+                                            <th>Field Label</th>
+                                            <th>Data Type</th>
+                                            <th>Required?</th>
+                                            <th>Config Options</th>
+                                            <th class="text-center" style="width: 50px;">Remove</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="wizardFormFieldsTableBody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="card p-3 border-secondary border-opacity-10 bg-white">
+                                <h6 class="small text-uppercase fw-bold text-secondary mb-3">Add Custom Field</h6>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted">Field Label Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="newFieldLabel" placeholder="e.g. Project Budget">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted">Field Type</label>
+                                        <select class="form-select form-select-sm" id="newFieldType">
+                                            <option value="TEXT">Short Text</option>
+                                            <option value="TEXTAREA">Long Text</option>
+                                            <option value="NUMBER">Number</option>
+                                            <option value="DATE">Date</option>
+                                            <option value="CHECKBOX">Checkbox</option>
+                                            <option value="DROPDOWN">Dropdown</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-none" id="newFieldOptionsWrapper">
+                                        <label class="form-label small text-muted">Dropdown Options (comma list)</label>
+                                        <input type="text" class="form-control form-control-sm" id="newFieldOptions" placeholder="US, EU, APAC">
+                                    </div>
+                                    <div class="col-md-2 py-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="newFieldRequired">
+                                            <label class="form-check-label small" for="newFieldRequired">Required</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-primary btn-sm w-100" type="button" id="addFormFieldBtn">+ Add</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: Final Review & Save -->
+                    <div class="wizard-step-panel d-none" id="stepPanel5">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 5: Review & Confirm Configuration</h6>
+                        <p class="text-muted small">Verify your sales process mapping below before applying these changes to the database.</p>
+                        
+                        <div class="card p-3 bg-light border-0 mb-3">
+                            <h6 class="small text-uppercase text-secondary fw-bold mb-3">Sales Flow Boundaries Summary</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Lead Stages:</strong>
+                                    <span id="reviewLeadStages" class="text-dark fw-semibold">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Conversion Point:</strong>
+                                    <span id="reviewConversionPoint" class="text-dark fw-semibold">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Opportunity Stages:</strong>
+                                    <span id="reviewOpportunityStages" class="text-dark fw-semibold">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Terminal Won Stage:</strong>
+                                    <span id="reviewWonStage" class="text-dark fw-semibold">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Terminal Lost Stage:</strong>
+                                    <span id="reviewLostStage" class="text-dark fw-semibold">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="small text-muted d-block">Conversion Form Status:</strong>
+                                    <span id="reviewFormStatus" class="text-dark fw-semibold">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress indicator log during saving -->
+                        <div id="wizardSaveLogs" class="d-none mt-3 p-3 bg-dark text-light font-monospace rounded small" style="max-height: 150px; overflow-y: auto;">
+                            <!-- Appended dynamically -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-3 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" id="wizardBackBtn">&larr; Back</button>
+                    <div>
+                        <button type="button" class="btn btn-outline-danger me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="wizardNextBtn">Next &rarr;</button>
+                        <button type="button" class="btn btn-success d-none" id="wizardSaveBtn">Confirm & Apply Setup</button>
+                    </div>
                 </div>
             </div>
         </div>
