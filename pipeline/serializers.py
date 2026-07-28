@@ -55,13 +55,40 @@ class PipelineStageSerializer(serializers.ModelSerializer):
             if anchor_qs.exists():
                 raise serializers.ValidationError({"stage_type": f"Only one {stage_type} stage can exist per pipeline."})
 
-        order = attrs.get('order', getattr(self.instance, 'order', None))
-        if pipeline and order is not None:
-            qs = PipelineStage.objects.filter(pipeline=pipeline, order=order)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise serializers.ValidationError({"order": "A stage with this order already exists in the pipeline."})
+        # Check if order was explicitly passed in the request data as a non-zero value
+        order_explicitly_passed = False
+        if self.initial_data and 'order' in self.initial_data:
+            val = self.initial_data['order']
+            try:
+                if val is not None and str(val).strip() != '' and int(val) != 0:
+                    order_explicitly_passed = True
+            except ValueError:
+                pass
+
+        if not self.instance:
+            if not order_explicitly_passed:
+                # Creation mode and order not explicitly supplied: auto-assign max(order) + 1
+                if pipeline:
+                    from django.db.models import Max
+                    max_order = PipelineStage.objects.filter(pipeline=pipeline).aggregate(Max('order'))['order__max']
+                    attrs['order'] = (max_order + 1) if max_order is not None else 0
+                else:
+                    attrs['order'] = 0
+            else:
+                # Order was explicitly passed, validate uniqueness
+                order = attrs.get('order')
+                if pipeline and order is not None:
+                    if PipelineStage.objects.filter(pipeline=pipeline, order=order).exists():
+                        raise serializers.ValidationError({"order": "A stage with this order already exists in the pipeline."})
+        else:
+            # Update mode: validate order uniqueness if it is being changed
+            order = attrs.get('order', getattr(self.instance, 'order', None))
+            if pipeline and order is not None:
+                qs = PipelineStage.objects.filter(pipeline=pipeline, order=order)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({"order": "A stage with this order already exists in the pipeline."})
 
         return attrs
 
