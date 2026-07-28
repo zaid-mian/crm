@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from opportunities.models import Opportunity
-from payments.models import Payment, PaymentMethod, PaymentTransaction
+from payments.models import InvoiceStatus, Payment, PaymentMethod, PaymentTransaction
 from payments.services.invoice import PaymentInvoiceService
 from payments.services.payment_workflow import PaymentWorkflowService
 
@@ -155,6 +155,10 @@ class PaymentRecordSerializer(serializers.Serializer):
                 attrs['payment_instance'] = Payment.objects.select_related('opportunity').get(pk=payment_id)
             except Payment.DoesNotExist as exc:
                 raise serializers.ValidationError({'payment_id': 'Payment not found.'}) from exc
+            if attrs['payment_instance'].status == InvoiceStatus.PAID:
+                raise serializers.ValidationError(
+                    {'payment_id': 'This invoice is already fully paid. Update its total first if another balance is due.'}
+                )
             return attrs
 
         if not attrs.get('company') or not attrs.get('opportunity') or attrs.get('total_amount') is None:

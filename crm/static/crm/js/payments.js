@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let totalPages = 1;
     let selectedPaymentId = null;
+    let selectedPaymentCanRecord = false;
     let opportunities = [];
 
     const drawer = document.getElementById('paymentDrawer');
@@ -32,6 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             container.innerHTML = '';
         }, 4000);
+    }
+
+    function canRecordPayment(payment) {
+        return payment.status !== 'PAID' && Number(payment.balance) > 0;
     }
 
     function openDrawer() {
@@ -124,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const editBtn = canModify
                         ? `<button class="crm-btn-icon" data-action="edit" data-id="${p.id}" title="Edit">✏</button>`
                         : '';
-                    const payBtn = canModify
+                    const payBtn = canModify && canRecordPayment(p)
                         ? `<button class="crm-btn-icon" data-action="pay" data-id="${p.id}" title="Record">💰</button>`
                         : '';
                     tr.innerHTML = `
@@ -186,7 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('companyFieldGroup').classList.toggle('d-none', mode === 'edit' || mode === 'add_payment');
         document.getElementById('opportunityFieldGroup').classList.toggle('d-none', mode === 'edit' || mode === 'add_payment');
         document.getElementById('totalAmountGroup').classList.toggle('d-none', mode === 'add_payment');
-        document.getElementById('recordAnotherBtn').classList.toggle('d-none', !canModify);
+        document.getElementById('recordAnotherBtn').classList.toggle(
+            'd-none',
+            !canModify || (mode === 'view' && !selectedPaymentCanRecord),
+        );
     }
 
     function openCreateDrawer() {
@@ -206,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedPaymentId = id;
         const res = await window.APIClient.get(`/api/payments/${id}/`);
         const p = res.data;
+        selectedPaymentCanRecord = canRecordPayment(p);
         const latestTxn = (p.transactions && p.transactions[0]) || null;
         document.getElementById('drawerTitle').textContent = 'Payment Details';
         setFormMode('view');
@@ -272,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('recordAnotherBtn')?.addEventListener('click', () => {
-        if (selectedPaymentId && canModify) openAddPaymentDrawer(selectedPaymentId);
+        if (selectedPaymentId && canModify && selectedPaymentCanRecord) openAddPaymentDrawer(selectedPaymentId);
     });
     document.getElementById('viewDownloadInvoice')?.addEventListener('click', () => {
         if (selectedPaymentId) {
