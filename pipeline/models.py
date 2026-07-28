@@ -35,7 +35,7 @@ class PipelineStage(models.Model):
 
     pipeline = models.ForeignKey(Pipeline, on_delete=models.CASCADE, related_name='stages')
     name = models.CharField(max_length=100)
-    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPE_CHOICES)
+    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPE_CHOICES, default='LEAD')
     order = models.PositiveIntegerField(default=0)
     color = models.CharField(max_length=7, default='#6c757d') # Hex code color support
     stage_type = models.CharField(max_length=30, choices=STAGE_TYPE_CHOICES, default='NORMAL_LEAD')

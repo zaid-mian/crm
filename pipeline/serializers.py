@@ -25,6 +25,9 @@ class PipelineSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
 
 class PipelineStageSerializer(serializers.ModelSerializer):
+    entity_type = serializers.CharField(required=False, default='LEAD')
+    stage_type = serializers.CharField(required=False, default='NORMAL_LEAD')
+
     class Meta:
         model = PipelineStage
         fields = ['id', 'pipeline', 'name', 'entity_type', 'order', 'color', 'stage_type', 'created_at']
