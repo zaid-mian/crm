@@ -733,7 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showStep(step) {
         currentStep = step;
-        for (let s = 1; s <= 5; s++) {
+        for (let s = 1; s <= 3; s++) {
             const panel = document.getElementById(`stepPanel${s}`);
             if (panel) {
                 if (s === step) {
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const progressLine = document.getElementById('wizardProgressLine');
         if (progressLine) {
-            progressLine.style.width = `${(step - 1) * 25}%`;
+            progressLine.style.width = `${(step - 1) * 50}%`;
         }
 
         const backBtn = document.getElementById('wizardBackBtn');
@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (backBtn) backBtn.disabled = (step === 1);
         
-        if (step === 5) {
+        if (step === 3) {
             if (nextBtn) nextBtn.classList.add('d-none');
             if (saveBtn) saveBtn.classList.remove('d-none');
             renderReviewSummary();
@@ -976,6 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dropdown change binds
     document.getElementById('wizardConversionStageSelect').addEventListener('change', (e) => {
         wizardConversionStageIdx = e.target.value !== '' ? parseInt(e.target.value) : null;
+        populateStep3Dropdowns(); // Dynamically filter Won/Lost options
     });
     document.getElementById('wizardWonStageSelect').addEventListener('change', (e) => {
         wizardWonStageIdx = e.target.value !== '' ? parseInt(e.target.value) : null;
@@ -1008,21 +1009,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.getElementById('wizardAlertContainer').innerHTML = '';
             populateStep2Dropdown();
+            populateStep3Dropdowns();
             showStep(2);
         } else if (currentStep === 2) {
-            if (wizardConversionStageIdx === null || wizardConversionStageIdx === '') {
-                UIUtils.showAlert('wizardAlertContainer', 'Please select a conversion stage.', 'danger');
-                return;
-            }
-            const convIdx = parseInt(wizardConversionStageIdx);
-            if (convIdx === 0) {
-                UIUtils.showAlert('wizardAlertContainer', 'The conversion stage cannot be the first stage. There must be at least one Lead stage.', 'danger');
-                return;
-            }
-            document.getElementById('wizardAlertContainer').innerHTML = '';
-            populateStep3Dropdowns();
-            showStep(3);
-        } else if (currentStep === 3) {
+            // Validate step 2 configuration (Conversion, Won, Lost alignment)
             const err = validateWizardConfig();
             if (err) {
                 UIUtils.showAlert('wizardAlertContainer', err, 'danger');
@@ -1030,10 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.getElementById('wizardAlertContainer').innerHTML = '';
             renderWizardFormFields();
-            showStep(4);
-        } else if (currentStep === 4) {
-            document.getElementById('wizardAlertContainer').innerHTML = '';
-            showStep(5);
+            showStep(3);
         }
     });
 

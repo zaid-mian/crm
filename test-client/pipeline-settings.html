@@ -248,28 +248,20 @@
                 <div class="modal-body p-4">
                     <!-- Stepper Progress Tracker -->
                     <div class="d-flex justify-content-between mb-4 position-relative stepper-wrapper">
-                        <div class="position-absolute top-50 start-0 translate-y-50 w-100 bg-secondary-subtle" style="height: 3px; z-index: 1;"></div>
-                        <div class="position-absolute top-50 start-0 translate-y-50 bg-primary" id="wizardProgressLine" style="height: 3px; z-index: 2; width: 0%; transition: width 0.3s ease;"></div>
+                        <div class="position-absolute top-50 start-0 translate-middle-y w-100 bg-secondary-subtle" style="height: 3px; z-index: 1;"></div>
+                        <div class="position-absolute top-50 start-0 translate-middle-y bg-primary" id="wizardProgressLine" style="height: 3px; z-index: 2; width: 0%; transition: width 0.3s ease;"></div>
                         
                         <div class="stepper-item active" data-step="1" style="z-index: 3;">
                             <div class="step-circle bg-primary text-white">1</div>
-                            <span class="step-label text-muted small mt-1">Stages</span>
+                            <span class="step-label text-muted small mt-1">Pipeline Stages</span>
                         </div>
                         <div class="stepper-item" data-step="2" style="z-index: 3;">
                             <div class="step-circle bg-secondary text-white">2</div>
-                            <span class="step-label text-muted small mt-1">Conversion</span>
+                            <span class="step-label text-muted small mt-1">Sales Flow</span>
                         </div>
                         <div class="stepper-item" data-step="3" style="z-index: 3;">
                             <div class="step-circle bg-secondary text-white">3</div>
-                            <span class="step-label text-muted small mt-1">Won/Lost</span>
-                        </div>
-                        <div class="stepper-item" data-step="4" style="z-index: 3;">
-                            <div class="step-circle bg-secondary text-white">4</div>
-                            <span class="step-label text-muted small mt-1">Form</span>
-                        </div>
-                        <div class="stepper-item" data-step="5" style="z-index: 3;">
-                            <div class="step-circle bg-secondary text-white">5</div>
-                            <span class="step-label text-muted small mt-1">Review</span>
+                            <span class="step-label text-muted small mt-1">Form & Review</span>
                         </div>
                     </div>
 
@@ -293,33 +285,32 @@
                         </div>
                     </div>
 
-                    <!-- STEP 2: Conversion point -->
+                    <!-- STEP 2: Sales Flow Behavior -->
                     <div class="wizard-step-panel d-none" id="stepPanel2">
-                        <h6 class="font-weight-semibold text-primary mb-3">Step 2: Conversion Point Selection</h6>
-                        <p class="text-muted small">Select the stage where a <strong>Lead</strong> transitions into an active sales <strong>Opportunity</strong>. (Example: When a client books a Demo/Meeting).</p>
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 2: Sales Flow Behavior</h6>
+                        <p class="text-muted small">Configure how records progress. Define the conversion milestone and terminal deal outcomes.</p>
                         
-                        <div class="mb-3 card p-3 bg-light border-0">
-                            <label for="wizardConversionStageSelect" class="form-label font-weight-medium text-dark">Where does a Lead become an Opportunity?</label>
-                            <select class="form-select form-select-lg" id="wizardConversionStageSelect">
+                        <!-- Conversion Point Selection -->
+                        <div class="card p-3 mb-3 border-0 bg-light shadow-sm">
+                            <label for="wizardConversionStageSelect" class="form-label font-weight-semibold text-dark mb-1">Where does a Lead become an Opportunity?</label>
+                            <p class="text-muted small mb-2">Stages prior to this selection represent Lead pipelines. This stage and all subsequent stages represent Opportunity pipelines.</p>
+                            <select class="form-select form-select-lg border-primary" id="wizardConversionStageSelect">
                                 <!-- Populated dynamically -->
                             </select>
                         </div>
-                    </div>
 
-                    <!-- STEP 3: Won/Lost stages -->
-                    <div class="wizard-step-panel d-none" id="stepPanel3">
-                        <h6 class="font-weight-semibold text-primary mb-3">Step 3: Won / Lost Target Stages (Optional)</h6>
-                        <p class="text-muted small">Configure which stages represent closed deals. You can skip these if they do not apply to this pipeline.</p>
-                        
-                        <!-- Won Stage Toggle -->
-                        <div class="card p-3 mb-3 border-0 bg-light">
+                        <!-- Won Stage Toggle & Selection -->
+                        <div class="card p-3 mb-3 border-0 bg-light shadow-sm">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold text-dark">Does this pipeline have a Won stage?</span>
+                                <div>
+                                    <span class="fw-semibold text-dark d-block">Does this pipeline have a Won stage?</span>
+                                    <small class="text-muted">A terminal stage representing successfully closed business.</small>
+                                </div>
                                 <div class="btn-group" role="group">
                                     <input type="radio" class="btn-check" name="hasWonRadio" id="hasWonYes" value="yes" checked>
-                                    <label class="btn btn-outline-primary btn-sm" for="hasWonYes">Yes</label>
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="hasWonYes">Yes</label>
                                     <input type="radio" class="btn-check" name="hasWonRadio" id="hasWonNo" value="no">
-                                    <label class="btn btn-outline-primary btn-sm" for="hasWonNo">No</label>
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="hasWonNo">No</label>
                                 </div>
                             </div>
                             <div class="mb-2" id="wonStageDropdownWrapper">
@@ -330,15 +321,18 @@
                             </div>
                         </div>
 
-                        <!-- Lost Stage Toggle -->
-                        <div class="card p-3 border-0 bg-light">
+                        <!-- Lost Stage Toggle & Selection -->
+                        <div class="card p-3 mb-3 border-0 bg-light shadow-sm">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold text-dark">Does this pipeline have a Lost stage?</span>
+                                <div>
+                                    <span class="fw-semibold text-dark d-block">Does this pipeline have a Lost stage?</span>
+                                    <small class="text-muted">A terminal stage representing dropped or lost deals.</small>
+                                </div>
                                 <div class="btn-group" role="group">
                                     <input type="radio" class="btn-check" name="hasLostRadio" id="hasLostYes" value="yes" checked>
-                                    <label class="btn btn-outline-primary btn-sm" for="hasLostYes">Yes</label>
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="hasLostYes">Yes</label>
                                     <input type="radio" class="btn-check" name="hasLostRadio" id="hasLostNo" value="no">
-                                    <label class="btn btn-outline-primary btn-sm" for="hasLostNo">No</label>
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="hasLostNo">No</label>
                                 </div>
                             </div>
                             <div class="mb-2" id="lostStageDropdownWrapper">
@@ -350,26 +344,31 @@
                         </div>
                     </div>
 
-                    <!-- STEP 4: Opportunity Custom Form Builder -->
-                    <div class="wizard-step-panel d-none" id="stepPanel4">
-                        <h6 class="font-weight-semibold text-primary mb-3">Step 4: Opportunity Conversion Form Fields</h6>
-                        <p class="text-muted small">Define required or optional fields to collect when a Lead converts into an Opportunity (e.g. Budget, Requirements, Start Date).</p>
+                    <!-- STEP 3: Conversion Form & Review -->
+                    <div class="wizard-step-panel d-none" id="stepPanel3">
+                        <h6 class="font-weight-semibold text-primary mb-3">Step 3: Custom Conversion Form & Review</h6>
+                        <p class="text-muted small">Configure data collection during Lead conversion and review the final pipeline configurations.</p>
                         
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" role="switch" id="wizardEnableFormToggle" checked>
-                            <label class="form-check-label fw-semibold text-dark" for="wizardEnableFormToggle">Enable custom conversion form fields</label>
+                        <!-- Toggle Form Fields -->
+                        <div class="form-check form-switch mb-3 p-3 bg-light rounded shadow-sm border border-secondary border-opacity-10 d-flex justify-content-between align-items-center ps-5">
+                            <div>
+                                <label class="form-check-label fw-semibold text-dark d-block" for="wizardEnableFormToggle">Enable custom conversion form fields</label>
+                                <small class="text-muted">Collect extra information (e.g. Budget, Requirements) when a Lead converts.</small>
+                            </div>
+                            <input class="form-check-input ms-0" type="checkbox" role="switch" id="wizardEnableFormToggle" checked style="width: 2.5em; height: 1.25em;">
                         </div>
 
-                        <div id="wizardFormBuilderWorkspace">
-                            <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
-                                <table class="table table-sm table-bordered align-middle">
+                        <!-- Form Builder Workspace -->
+                        <div id="wizardFormBuilderWorkspace" class="mb-4">
+                            <div class="table-responsive mb-3 border rounded shadow-sm bg-white" style="max-height: 180px; overflow-y: auto;">
+                                <table class="table table-sm table-hover align-middle mb-0">
                                     <thead class="table-light text-secondary small">
                                         <tr>
-                                            <th>Field Label</th>
+                                            <th class="ps-3">Field Label</th>
                                             <th>Data Type</th>
                                             <th>Required?</th>
                                             <th>Config Options</th>
-                                            <th class="text-center" style="width: 50px;">Remove</th>
+                                            <th class="text-center" style="width: 70px;">Remove</th>
                                         </tr>
                                     </thead>
                                     <tbody id="wizardFormFieldsTableBody">
@@ -378,15 +377,15 @@
                                 </table>
                             </div>
 
-                            <div class="card p-3 border-secondary border-opacity-10 bg-white">
-                                <h6 class="small text-uppercase fw-bold text-secondary mb-3">Add Custom Field</h6>
+                            <div class="card p-3 border-secondary border-opacity-10 bg-light shadow-sm">
+                                <h6 class="small text-uppercase fw-bold text-secondary mb-2">Add Custom Field</h6>
                                 <div class="row g-2 align-items-end">
                                     <div class="col-md-4">
-                                        <label class="form-label small text-muted">Field Label Name</label>
+                                        <label class="form-label small text-muted mb-1">Field Label Name</label>
                                         <input type="text" class="form-control form-control-sm" id="newFieldLabel" placeholder="e.g. Project Budget">
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label small text-muted">Field Type</label>
+                                        <label class="form-label small text-muted mb-1">Field Type</label>
                                         <select class="form-select form-select-sm" id="newFieldType">
                                             <option value="TEXT">Short Text</option>
                                             <option value="TEXTAREA">Long Text</option>
@@ -397,60 +396,56 @@
                                         </select>
                                     </div>
                                     <div class="col-md-3 d-none" id="newFieldOptionsWrapper">
-                                        <label class="form-label small text-muted">Dropdown Options (comma list)</label>
+                                        <label class="form-label small text-muted mb-1">Dropdown Options (comma list)</label>
                                         <input type="text" class="form-control form-control-sm" id="newFieldOptions" placeholder="US, EU, APAC">
                                     </div>
-                                    <div class="col-md-2 py-2">
-                                        <div class="form-check">
+                                    <div class="col-md-2 text-center py-2">
+                                        <div class="form-check d-inline-block text-start">
                                             <input class="form-check-input" type="checkbox" id="newFieldRequired">
                                             <label class="form-check-label small" for="newFieldRequired">Required</label>
                                         </div>
                                     </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-primary btn-sm w-100" type="button" id="addFormFieldBtn">+ Add</button>
+                                    <div class="col-md-2 ms-auto">
+                                        <button class="btn btn-primary btn-sm w-100 fw-semibold" type="button" id="addFormFieldBtn">+ Add</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- STEP 5: Final Review & Save -->
-                    <div class="wizard-step-panel d-none" id="stepPanel5">
-                        <h6 class="font-weight-semibold text-primary mb-3">Step 5: Review & Confirm Configuration</h6>
-                        <p class="text-muted small">Verify your sales process mapping below before applying these changes to the database.</p>
-                        
-                        <div class="card p-3 bg-light border-0 mb-3">
-                            <h6 class="small text-uppercase text-secondary fw-bold mb-3">Sales Flow Boundaries Summary</h6>
+                        <!-- Review Summary Section -->
+                        <div class="card p-3 bg-light border-primary border-opacity-25 shadow-sm mb-3">
+                            <h6 class="small text-uppercase text-primary fw-bold mb-3 d-flex align-items-center">
+                                <span class="me-2">📋</span> Sales Pipeline Flow Summary
+                            </h6>
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Lead Stages:</strong>
-                                    <span id="reviewLeadStages" class="text-dark fw-semibold">-</span>
+                                <div class="col-md-6 border-end border-secondary border-opacity-10">
+                                    <strong class="small text-muted d-block mb-1">Lead Phase Stages:</strong>
+                                    <span id="reviewLeadStages" class="text-dark fw-semibold small">-</span>
                                 </div>
                                 <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Conversion Point:</strong>
-                                    <span id="reviewConversionPoint" class="text-dark fw-semibold">-</span>
+                                    <strong class="small text-muted d-block mb-1">Conversion Stage Gate:</strong>
+                                    <span id="reviewConversionPoint" class="text-primary fw-bold small">-</span>
                                 </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Opportunity Stages:</strong>
-                                    <span id="reviewOpportunityStages" class="text-dark fw-semibold">-</span>
+                                <div class="col-md-6 border-end border-secondary border-opacity-10 border-top pt-2">
+                                    <strong class="small text-muted d-block mb-1">Opportunity Phase Stages:</strong>
+                                    <span id="reviewOpportunityStages" class="text-dark fw-semibold small">-</span>
                                 </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Terminal Won Stage:</strong>
-                                    <span id="reviewWonStage" class="text-dark fw-semibold">-</span>
+                                <div class="col-md-6 border-top pt-2">
+                                    <strong class="small text-muted d-block mb-1">Terminal Outcomes (Won/Lost):</strong>
+                                    <div class="small fw-semibold text-dark">
+                                        Won: <span id="reviewWonStage" class="text-success">-</span> | 
+                                        Lost: <span id="reviewLostStage" class="text-danger">-</span>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Terminal Lost Stage:</strong>
-                                    <span id="reviewLostStage" class="text-dark fw-semibold">-</span>
-                                </div>
-                                <div class="col-md-6">
-                                    <strong class="small text-muted d-block">Conversion Form Status:</strong>
-                                    <span id="reviewFormStatus" class="text-dark fw-semibold">-</span>
+                                <div class="col-md-12 border-top pt-2">
+                                    <strong class="small text-muted d-block mb-1">Conversion Data Form:</strong>
+                                    <span id="reviewFormStatus" class="text-secondary fw-semibold small">-</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Progress indicator log during saving -->
-                        <div id="wizardSaveLogs" class="d-none mt-3 p-3 bg-dark text-light font-monospace rounded small" style="max-height: 150px; overflow-y: auto;">
+                        <div id="wizardSaveLogs" class="d-none mt-3 p-3 bg-dark text-light font-monospace rounded small" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.15);">
                             <!-- Appended dynamically -->
                         </div>
                     </div>
