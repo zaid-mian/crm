@@ -309,3 +309,32 @@ class LeadViewSetTestCase(APITestCase):
         response = self.client.post(convert_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data["data"]["converted_at"])
+
+
+class AuthViewsTestCase(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('sales_user', 'sales@example.com', 'password123')
+        self.admin = User.objects.create_superuser('admin_user', 'admin@example.com', 'adminpass')
+        self.login_url = reverse('leads:login')
+        self.me_url = reverse('leads:me')
+        self.logout_url = reverse('leads:logout')
+
+    def test_login_success_and_user_type(self):
+        response = self.client.post(self.login_url, {"username": "sales_user", "password": "password123"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["user_type"], "USER")
+
+    def test_me_endpoint_requires_auth(self):
+        response = self.client.get(self.me_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_me_endpoint_returns_user_type_after_login(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["user_type"], "USER")
+
+    def test_logout_invalidates_session(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
