@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdaptCRM - Admin Panel</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .navbar-dark {
+            background-color: #1e293b !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .card-custom {
+            background-color: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Route Protection Guard -->
+    <script>
+        const username = localStorage.getItem('auth_username');
+        const userType = localStorage.getItem('user_type');
+        if (!username || userType !== 'ADMIN') {
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1 font-weight-bold"><span class="text-primary">Adapt</span>CRM Admin</span>
+            <div class="d-flex gap-3 align-items-center">
+                <span class="text-secondary small">Signed in as <strong id="adminUsername" class="text-white"></strong></span>
+                <button class="btn btn-outline-danger btn-sm" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="container py-5 mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="card card-custom p-5 shadow-lg">
+                    <div class="mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-shield-lock-fill text-primary" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.8 11.8 0 0 0 2.517-2.453c1.678-2.195 3.061-5.513 2.465-9.99a1.54 1.54 0 0 0-1.044-1.263 60 60 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m0 5a1.5 1.5 0 0 1 .5 2.9155V10.5a.5.5 0 0 1-1 0V7.915A1.5 1.5 0 0 1 8 5"/>
+                        </svg>
+                    </div>
+                    <h1 class="font-weight-bold text-white mb-2">Welcome to Admin Panel</h1>
+                    <p class="text-secondary mb-4">This is the secure administrative area for managing global CRM pipeline system options, custom fields, and configurations.</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="index.html" class="btn btn-outline-light px-4">Launch Hub Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('adminUsername').innerText = localStorage.getItem('auth_username') || 'Admin';
+        
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await APIClient.post('/api/logout/');
+            } catch (e) {
+                // Ignore failure and clear local storage anyway
+            }
+            localStorage.removeItem('auth_username');
+            localStorage.removeItem('auth_password');
+            localStorage.removeItem('user_type');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>

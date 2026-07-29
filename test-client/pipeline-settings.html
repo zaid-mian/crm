@@ -76,6 +76,11 @@
     </style>
 </head>
 <body class="bg-light">
+    <script>
+        if (!localStorage.getItem('auth_username') || localStorage.getItem('user_type') !== 'USER') {
+            window.location.href = 'login.html';
+        }
+    </script>
 
     <!-- Main Navigation Bar -->
     <nav class="navbar navbar-dark bg-dark shadow-sm">

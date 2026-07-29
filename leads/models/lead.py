@@ -185,3 +185,33 @@ class Lead(models.Model):
                 "Pipeline stage does not belong to the selected pipeline."
             )
         super().save(*args, **kwargs)
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class UserProfile(models.Model):
+    USER_TYPE_CHOICES = [
+        ('ADMIN', 'Admin'),
+        ('USER', 'User'),
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='USER')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.user_type}"
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance, user_type='ADMIN' if instance.is_superuser or instance.is_staff else 'USER')
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if not hasattr(instance, 'profile'):
+        UserProfile.objects.create(user=instance, user_type='ADMIN' if instance.is_superuser or instance.is_staff else 'USER')
+    else:
+        instance.profile.save()

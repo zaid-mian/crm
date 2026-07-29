@@ -1,3 +1,3 @@
-from .lead import Lead
+from .lead import Lead, UserProfile
 
-__all__ = ['Lead']
+__all__ = ['Lead', 'UserProfile']
