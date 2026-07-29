@@ -171,8 +171,17 @@ class Lead(models.Model):
                 raise ValidationError(
                     "Lost reason and lost notes can only be set when status is 'Lost'."
                 )
+        
+        if self.pipeline and self.pipeline_stage and self.pipeline_stage.pipeline_id != self.pipeline_id:
+            raise ValidationError(
+                {"pipeline_stage": "Pipeline stage does not belong to the selected pipeline."}
+            )
 
     def save(self, *args, **kwargs):
         if self.pipeline_stage and not self.pipeline:
             self.pipeline = self.pipeline_stage.pipeline
+        if self.pipeline and self.pipeline_stage and self.pipeline_stage.pipeline_id != self.pipeline_id:
+            raise ValidationError(
+                "Pipeline stage does not belong to the selected pipeline."
+            )
         super().save(*args, **kwargs)

@@ -88,3 +88,30 @@ class LeadModelTestCase(TestCase):
         )
         with self.assertRaises(ValidationError):
             lead_with_notes.full_clean()
+
+    def test_pipeline_matching_stage_validation(self):
+        """Verify that lead full_clean/save raises ValidationError if pipeline doesn't match stage's pipeline."""
+        from pipeline.models import Pipeline, PipelineStage
+        pipeline1 = Pipeline.objects.create(name="Pipeline 1")
+        pipeline2 = Pipeline.objects.create(name="Pipeline 2")
+        stage1 = PipelineStage.objects.create(
+            pipeline=pipeline1,
+            name="Stage 1",
+            entity_type='LEAD',
+            order=0,
+            stage_type='NORMAL_LEAD'
+        )
+        
+        lead = Lead(
+            full_name="Mismatched Lead",
+            phone="+12345",
+            company_name="Acme Inc",
+            pipeline=pipeline2,
+            pipeline_stage=stage1
+        )
+        
+        with self.assertRaises(ValidationError):
+            lead.full_clean()
+            
+        with self.assertRaises(ValidationError):
+            lead.save()

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from leads.models import Lead
 from contacts.models import Contact
 
@@ -125,9 +126,20 @@ class Opportunity(models.Model):
         from decimal import Decimal
         return (self.amount * Decimal(self.probability)) / 100
 
+    def clean(self):
+        super().clean()
+        if self.pipeline and self.pipeline_stage and self.pipeline_stage.pipeline_id != self.pipeline_id:
+            raise ValidationError(
+                {"pipeline_stage": "Pipeline stage does not belong to the selected pipeline."}
+            )
+
     def save(self, *args, **kwargs):
         if self.pipeline_stage and not self.pipeline:
             self.pipeline = self.pipeline_stage.pipeline
+        if self.pipeline and self.pipeline_stage and self.pipeline_stage.pipeline_id != self.pipeline_id:
+            raise ValidationError(
+                "Pipeline stage does not belong to the selected pipeline."
+            )
         if not hasattr(self, 'company') or self.company is None:
             from companies.models import Company
             company, _ = Company.objects.get_or_create(

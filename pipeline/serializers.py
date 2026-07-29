@@ -27,10 +27,25 @@ class PipelineSerializer(serializers.ModelSerializer):
 class PipelineStageSerializer(serializers.ModelSerializer):
     entity_type = serializers.CharField(required=False, default='LEAD')
     stage_type = serializers.CharField(required=False, default='NORMAL_LEAD')
+    is_conversion = serializers.SerializerMethodField()
+    is_terminal_won = serializers.SerializerMethodField()
+    is_terminal_lost = serializers.SerializerMethodField()
 
     class Meta:
         model = PipelineStage
-        fields = ['id', 'pipeline', 'name', 'entity_type', 'order', 'color', 'stage_type', 'created_at']
+        fields = [
+            'id', 'pipeline', 'name', 'entity_type', 'order', 'color',
+            'stage_type', 'is_conversion', 'is_terminal_won', 'is_terminal_lost', 'created_at'
+        ]
+
+    def get_is_conversion(self, obj):
+        return obj.stage_type == 'CONVERSION'
+
+    def get_is_terminal_won(self, obj):
+        return obj.stage_type == 'WON'
+
+    def get_is_terminal_lost(self, obj):
+        return obj.stage_type == 'LOST'
 
     def validate(self, attrs):
         entity_type = attrs.get('entity_type', getattr(self.instance, 'entity_type', None))
