@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Payments Workspace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <a href="index.html" class="navbar-brand mb-0 h1 d-flex align-items-center">
+                <span class="text-primary me-2 font-weight-bold">&laquo;</span>
+                <span class="small font-weight-medium">AdaptCRM Payments</span>
+            </a>
+            <span class="navbar-text text-muted small">
+                API: <span id="connectedBaseDisplay" class="font-monospace text-light">http://localhost:8000</span>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 mt-3" id="mainAlertContainer"></div>
+
+    <div class="container-fluid px-4 my-4">
+        <div class="row g-4">
+            <div class="col-lg-9">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body py-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                            <h4 class="mb-0 font-weight-semibold">Payments</h4>
+                            <button class="btn btn-primary" id="openRecordBtn" type="button">+ Record Payment</button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="searchBox" placeholder="Search invoice, company...">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" id="filterStatus">
+                                    <option value="">Payment Status</option>
+                                    <option value="UNPAID">Unpaid</option>
+                                    <option value="PARTIALLY_PAID">Partially Paid</option>
+                                    <option value="PAID">Paid</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" id="filterMethod">
+                                    <option value="">Payment Method</option>
+                                    <option value="CASH">Cash</option>
+                                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                                    <option value="CREDIT_CARD">Credit Card</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" id="filterCompany">
+                                    <option value="">Company</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group input-group-sm">
+                                    <input type="date" class="form-control" id="filterDateFrom" aria-label="From">
+                                    <input type="date" class="form-control" id="filterDateTo" aria-label="To">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-0">
+                        <div id="loadingState" class="text-center py-5 text-muted d-none">Loading Payments...</div>
+                        <div id="emptyState" class="text-center py-5 text-muted d-none">
+                            <h5>No Payment Records Found</h5>
+                            <p class="mb-0">Payments will appear after an opportunity is won.</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="paymentsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Invoice No</th>
+                                        <th>Company</th>
+                                        <th>Opportunity</th>
+                                        <th>Total</th>
+                                        <th>Paid</th>
+                                        <th>Balance</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                        <span class="small text-muted" id="paginationDisplay">Page 1</span>
+                        <nav><ul class="pagination pagination-sm mb-0" id="paginationNav"></ul></nav>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between">
+                        <h6 class="mb-0">Developer Console</h6>
+                        <button class="btn btn-sm btn-outline-secondary" id="clearConsoleBtn" type="button">Clear</button>
+                    </div>
+                    <div class="card-body bg-dark text-light font-monospace small" id="consoleOutput" style="height: 520px; overflow-y: auto;">
+                        <div class="text-secondary">Awaiting API calls...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record / Edit Drawer -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="paymentDrawer" style="width: 420px;">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title" id="drawerTitle">Record Payment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <form id="paymentForm">
+                <input type="hidden" id="paymentId">
+                <input type="hidden" id="formMode" value="create">
+
+                <div class="mb-3" id="companyFieldGroup">
+                    <label class="form-label">Company *</label>
+                    <select class="form-select" id="formCompany"></select>
+                </div>
+                <div class="mb-3" id="opportunityFieldGroup">
+                    <label class="form-label">Opportunity *</label>
+                    <select class="form-select" id="formOpportunity"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Invoice Number</label>
+                    <input type="text" class="form-control" id="formInvoice" readonly placeholder="AUTO GENERATED">
+                </div>
+                <div class="mb-3" id="totalAmountGroup">
+                    <label class="form-label">Total Amount *</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="formTotalAmount">
+                </div>
+                <div class="mb-3" id="amountReceivedGroup">
+                    <label class="form-label">Amount Received *</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="formAmountReceived">
+                </div>
+                <div class="mb-3" id="methodGroup">
+                    <label class="form-label">Payment Method *</label>
+                    <select class="form-select" id="formMethod">
+                        <option value="CASH">Cash</option>
+                        <option value="BANK_TRANSFER">Bank Transfer</option>
+                        <option value="CREDIT_CARD">Credit Card</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="referenceGroup">
+                    <label class="form-label">Transaction Reference</label>
+                    <input type="text" class="form-control" id="formReference">
+                </div>
+                <div class="mb-3" id="dateGroup">
+                    <label class="form-label">Payment Date *</label>
+                    <input type="date" class="form-control" id="formDate">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" id="formNotes" rows="2"></textarea>
+                </div>
+                <div class="d-flex gap-2 pt-2">
+                    <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="offcanvas">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-fill" id="savePaymentBtn">Save</button>
+                </div>
+            </form>
+
+            <div id="viewPanel" class="d-none">
+                <h6 class="text-uppercase text-muted small border-bottom pb-2">Basic Information</h6>
+                <dl class="row small mb-4" id="viewDetails"></dl>
+                <h6 class="text-uppercase text-muted small border-bottom pb-2">Payment History</h6>
+                <ul class="list-unstyled small mb-4" id="viewHistory"></ul>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" type="button" id="recordAnotherBtn">Record Another Payment</button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="viewDownloadInvoice">Download Invoice</button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="viewPrintReceipt">Print Receipt</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/payments.js"></script>
+</body>
+</html>

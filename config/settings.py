@@ -38,11 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters',
     'leads',
     'contacts',
     'opportunities',
     'companies',
     'pipeline',
+    'payments',
     'corsheaders',
 ]
 

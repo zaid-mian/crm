@@ -51,6 +51,11 @@ class OpportunityWorkflowService:
 
         opportunity.stage = new_stage
         opportunity.save()
+
+        if new_stage == OpportunityStage.CLOSED_WON:
+            from payments.services.invoice import PaymentInvoiceService
+            PaymentInvoiceService.generate_from_opportunity(opportunity, user=user)
+
         return opportunity
 
     @staticmethod
@@ -79,6 +84,10 @@ class OpportunityWorkflowService:
             opportunity.stage = 'CLOSED_LOST'
 
         opportunity.save()
+
+        if opportunity.stage == 'CLOSED_WON':
+            from payments.services.invoice import PaymentInvoiceService
+            PaymentInvoiceService.generate_from_opportunity(opportunity, user=user)
 
         if old_stage != target_stage or old_pipeline != target_stage.pipeline:
             from pipeline.models import PipelineAuditLog

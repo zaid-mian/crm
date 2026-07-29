@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Receipt {{ payment.invoice_number }}</title></head>
+<body>
+  <h1>Payment Receipt</h1>
+  <p><strong>Invoice:</strong> {{ payment.invoice_number }}</p>
+  <p><strong>Company:</strong> {{ company_name }}</p>
+  {% if transaction %}
+  <p><strong>Amount:</strong> {{ transaction.amount }} {{ payment.currency }}</p>
+  <p><strong>Method:</strong> {{ transaction.get_payment_method_display }}</p>
+  <p><strong>Reference:</strong> {{ transaction.transaction_reference }}</p>
+  <p><strong>Date:</strong> {{ transaction.payment_date }}</p>
+  {% endif %}
+</body>
+</html>
