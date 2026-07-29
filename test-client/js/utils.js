@@ -130,7 +130,7 @@ class UIUtils {
                 }
             } catch (e) {
                 console.error("Failed to load pipelines in drawer:", e);
-                bodyEl.innerHTML = \`<div class="alert alert-danger">Failed to load pipelines.</div>\`;
+                bodyEl.innerHTML = '<div class="alert alert-danger">Failed to load pipelines.</div>';
                 return;
             }
         }
