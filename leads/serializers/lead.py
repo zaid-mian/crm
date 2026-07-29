@@ -101,34 +101,35 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             'pipeline',
             'pipeline_stage',
         ]
-        read_only_fields = ['id', 'lead_code', 'pipeline', 'pipeline_stage']
+        read_only_fields = ['id', 'lead_code', 'pipeline_stage']
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        phone = attrs.get('phone')
+        if not email and not phone:
+            raise serializers.ValidationError("At least one contact method (email or phone) must be provided.")
+
+        from pipeline.models import Pipeline, PipelineStage
+
+        pipeline = attrs.get('pipeline')
+        if not pipeline:
+            pipeline = Pipeline.objects.filter(is_default=True).first()
+            if not pipeline:
+                pipeline = Pipeline.objects.first()
+            if not pipeline:
+                pipeline = Pipeline.objects.create(name="Default Pipeline", is_default=True)
+
+        first_stage = PipelineStage.objects.filter(pipeline=pipeline).order_by('order').first()
+        if not first_stage:
+            raise serializers.ValidationError(
+                {"pipeline": "The selected pipeline has no active stages configured."}
+            )
+
+        attrs['pipeline'] = pipeline
+        attrs['pipeline_stage'] = first_stage
+        return attrs
 
     def create(self, validated_data):
-        from pipeline.models import Pipeline, PipelineStage
-        
-        default_pipeline = Pipeline.objects.filter(is_default=True).first()
-        if not default_pipeline:
-            default_pipeline = Pipeline.objects.first()
-        if not default_pipeline:
-            default_pipeline = Pipeline.objects.create(name="Default Pipeline", is_default=True)
-            
-        first_stage = PipelineStage.objects.filter(
-            pipeline=default_pipeline,
-            entity_type='LEAD'
-        ).order_by('order').first()
-        
-        if not first_stage:
-            first_stage = PipelineStage.objects.create(
-                pipeline=default_pipeline,
-                name="New",
-                entity_type='LEAD',
-                order=0,
-                stage_type='NORMAL_LEAD'
-            )
-            
-        validated_data['pipeline'] = default_pipeline
-        validated_data['pipeline_stage'] = first_stage
-        
         return super().create(validated_data)
 
     def validate_phone(self, value):
@@ -141,13 +142,6 @@ class LeadCreateSerializer(serializers.ModelSerializer):
         if Lead.objects.filter(phone=value, is_converted=False).exists():
             raise serializers.ValidationError("A lead with this phone number already exists.")
         return value
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        phone = attrs.get('phone')
-        if not email and not phone:
-            raise serializers.ValidationError("At least one contact method (email or phone) must be provided.")
-        return attrs
 
     def validate_email(self, value):
         """

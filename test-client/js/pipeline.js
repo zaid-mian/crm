@@ -526,7 +526,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // Default selection
-                activePipelineId = parseInt(pipelineSelect.value);
+                let defaultPipeline = pipelines.find(p => p.is_default);
+                if (!defaultPipeline && pipelines.length > 0) {
+                    defaultPipeline = pipelines[0];
+                }
+                if (defaultPipeline) {
+                    pipelineSelect.value = defaultPipeline.id;
+                    activePipelineId = defaultPipeline.id;
+                } else {
+                    activePipelineId = parseInt(pipelineSelect.value);
+                }
                 console.log("Selected pipeline:", activePipelineId);
                 console.log("Calling loadPipeline...");
                 await loadPipeline();
@@ -614,8 +623,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 2. Fetch cards matching active stages
-            console.log("Calling GET /api/pipeline/...");
-            const cardsRes = await APIClient.get('/api/pipeline/');
+            console.log(`Calling GET /api/pipeline/?pipeline=${activePipelineId}...`);
+            const cardsRes = await APIClient.get(`/api/pipeline/?pipeline=${activePipelineId}`);
             console.log("Response received from GET /api/pipeline/:", cardsRes);
             
             let cards = [];
@@ -917,6 +926,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     cancelConversionBtn.addEventListener('click', cancelConversion);
     closeConversionModalBtn.addEventListener('click', cancelConversion);
+
+    // --- Add Lead Trigger ---
+    const addLeadBtn = document.getElementById('addLeadBtn');
+    if (addLeadBtn) {
+        addLeadBtn.addEventListener('click', () => {
+            UIUtils.showLeadCreationDrawer({
+                drawerEl: drawerEl,
+                bsDrawer: bsDrawer,
+                preselectedPipelineId: activePipelineId,
+                pipelinesList: allPipelines,
+                onSuccess: (lead) => {
+                    const leadPipelineId = (lead.pipeline && typeof lead.pipeline === 'object') ? lead.pipeline.id : lead.pipeline;
+                    if (leadPipelineId === activePipelineId) {
+                        UIUtils.showAlert('mainAlertContainer', 'Lead created successfully.');
+                        loadPipeline();
+                    } else {
+                        const targetPipelineName = allPipelines.find(p => p.id === leadPipelineId)?.name || 'another pipeline';
+                        UIUtils.showAlert('mainAlertContainer', `Lead created successfully in pipeline "${targetPipelineName}".`);
+                    }
+                }
+            });
+        });
+    }
 
     // --- Init ---
     (async () => {

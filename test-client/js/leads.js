@@ -346,84 +346,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addLeadBtn').addEventListener('click', () => {
         activeLeadId = null;
         
-        // Configure Drawer Header and Form Body for Creation Mode
-        document.getElementById('drawerTitle').innerText = 'Add Lead';
-        document.getElementById('drawerContent').innerHTML = `
-            <form id="leadForm">
-                <div class="mb-3">
-                    <label class="form-label font-weight-medium">Full Name *</label>
-                    <input type="text" class="form-control" name="full_name" required>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Phone Number</label>
-                        <input type="text" class="form-control" name="phone" placeholder="+15551234">
-                    </div>
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Email Address</label>
-                        <input type="email" class="form-control" name="email">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label font-weight-medium">Company Name *</label>
-                    <input type="text" class="form-control" name="company_name" required>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Lead Source</label>
-                        <select class="form-select" name="source">
-                            <option value="WEBSITE">Website</option>
-                            <option value="FACEBOOK">Facebook</option>
-                            <option value="GOOGLE_ADS">Google Ads</option>
-                            <option value="REFERRAL">Referral</option>
-                            <option value="WALK_IN">Walk-in</option>
-                            <option value="PHONE_CALL">Phone Call</option>
-                            <option value="EMAIL_CAMPAIGN">Email Campaign</option>
-                            <option value="OTHER" selected>Other</option>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Priority</label>
-                        <select class="form-select" name="priority">
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM" selected>Medium</option>
-                            <option value="HIGH">High</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label font-weight-medium">Notes</label>
-                    <textarea class="form-control" name="notes" rows="3"></textarea>
-                </div>
-                <div class="d-flex gap-2 justify-content-end mt-4">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="offcanvas">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4">Save Lead</button>
-                </div>
-            </form>
-        `;
-
-        // Bind form submit
-        document.getElementById('leadForm').addEventListener('submit', handleCreateSubmit);
-        leadDrawer.show();
-    });
-
-    async function handleCreateSubmit(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const body = Object.fromEntries(formData.entries());
-
-        try {
-            const response = await APIClient.post('/api/leads/', body);
-            if (response.success) {
-                leadDrawer.hide();
+        UIUtils.showLeadCreationDrawer({
+            drawerEl: document.getElementById('leadDrawer'),
+            bsDrawer: leadDrawer,
+            onSuccess: (lead) => {
                 UIUtils.showAlert('mainAlertContainer', 'Lead created successfully.');
                 loadLeads();
                 loadStats();
             }
-        } catch (error) {
-            UIUtils.showAlert('mainAlertContainer', error.message || 'Validation failed during creation.', 'danger');
-        }
-    }
+        });
+    });
 
     // --- View Lead Workflow ---
     async function openViewDrawer(id) {

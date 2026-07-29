@@ -172,3 +172,111 @@ class LeadSerializerTestCase(TestCase):
         }
         serializer = LeadCreateSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_create_lead_with_pipeline_selection(self):
+        """Verify creating a lead with an explicit pipeline selected."""
+        from pipeline.models import Pipeline, PipelineStage
+        pipeline = Pipeline.objects.create(name="Enterprise Pipeline")
+        stage = PipelineStage.objects.create(
+            pipeline=pipeline,
+            name="Incoming",
+            entity_type='LEAD',
+            order=0,
+            stage_type='NORMAL_LEAD'
+        )
+        
+        data = {
+            "full_name": "Selected Pipeline Lead",
+            "phone": "+1999999",
+            "company_name": "Enterprise Co",
+            "pipeline": pipeline.id
+        }
+        
+        serializer = LeadCreateSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        lead = serializer.save()
+        self.assertEqual(lead.pipeline, pipeline)
+        self.assertEqual(lead.pipeline_stage, stage)
+
+    def test_create_lead_assigns_first_active_stage(self):
+        """Verify that lead creation automatically assigns the active stage with the lowest order."""
+        from pipeline.models import Pipeline, PipelineStage
+        pipeline = Pipeline.objects.create(name="Multi-stage Pipeline")
+        stage2 = PipelineStage.objects.create(
+            pipeline=pipeline,
+            name="Later Stage",
+            entity_type='LEAD',
+            order=5,
+            stage_type='NORMAL_LEAD'
+        )
+        stage1 = PipelineStage.objects.create(
+            pipeline=pipeline,
+            name="First Stage",
+            entity_type='LEAD',
+            order=2,
+            stage_type='NORMAL_LEAD'
+        )
+        
+        data = {
+            "full_name": "First Stage Lead",
+            "phone": "+188888",
+            "company_name": "Multi Co",
+            "pipeline": pipeline.id
+        }
+        
+        serializer = LeadCreateSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        lead = serializer.save()
+        self.assertEqual(lead.pipeline_stage, stage1)
+
+    def test_create_lead_fails_with_no_stages_configured(self):
+        """Verify that lead creation fails if selected pipeline has no stages configured."""
+        from pipeline.models import Pipeline
+        pipeline = Pipeline.objects.create(name="Empty Pipeline")
+        
+        data = {
+            "full_name": "Empty Stage Lead",
+            "phone": "+1777777",
+            "company_name": "Empty Co",
+            "pipeline": pipeline.id
+        }
+        
+        serializer = LeadCreateSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("pipeline", serializer.errors)
+        self.assertEqual(
+            serializer.errors["pipeline"][0],
+            "The selected pipeline has no active stages configured."
+        )
+
+    def test_create_lead_ignores_client_stage_override(self):
+        """Verify that any client-supplied pipeline_stage is ignored and first stage is used."""
+        from pipeline.models import Pipeline, PipelineStage
+        pipeline = Pipeline.objects.create(name="Override Pipeline")
+        stage1 = PipelineStage.objects.create(
+            pipeline=pipeline,
+            name="Stage 1",
+            entity_type='LEAD',
+            order=0,
+            stage_type='NORMAL_LEAD'
+        )
+        stage2 = PipelineStage.objects.create(
+            pipeline=pipeline,
+            name="Stage 2",
+            entity_type='LEAD',
+            order=1,
+            stage_type='NORMAL_LEAD'
+        )
+        
+        data = {
+            "full_name": "Override Stage Lead",
+            "phone": "+166666",
+            "company_name": "Override Co",
+            "pipeline": pipeline.id,
+            "pipeline_stage": stage2.id
+        }
+        
+        serializer = LeadCreateSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        lead = serializer.save()
+        self.assertEqual(lead.pipeline_stage, stage1)
