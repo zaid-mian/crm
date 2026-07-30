@@ -3,7 +3,6 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from opportunities.models import OpportunityStage
 from payments.models import InvoiceStatus, Payment, PaymentTransaction
 from payments.services.activity import PaymentActivityService
 
@@ -60,7 +59,7 @@ class PaymentWorkflowService:
 
     @staticmethod
     def validate_opportunity_for_payment(opportunity) -> None:
-        if opportunity.stage != OpportunityStage.CLOSED_WON:
+        if not opportunity.won:
             raise ValidationError(
                 {'opportunity': 'Payments are only allowed after the opportunity is marked Won.'}
             )

@@ -131,6 +131,9 @@ class LeadWorkflowService:
             if not company.description and lead.notes:
                 company.description = lead.notes
                 company_updated = True
+            if not company.assigned_salesperson and lead.assigned_salesperson:
+                company.assigned_salesperson = lead.assigned_salesperson
+                company_updated = True
             if company_updated:
                 company.save()
         else:
@@ -171,6 +174,9 @@ class LeadWorkflowService:
             if not contact.phone_number and lead.phone:
                 contact.phone_number = lead.phone
                 contact_updated = True
+            if not contact.assigned_salesperson and lead.assigned_salesperson:
+                contact.assigned_salesperson = lead.assigned_salesperson
+                contact_updated = True
             if contact_updated:
                 contact.save()
         else:
@@ -185,10 +191,20 @@ class LeadWorkflowService:
             )
 
         opp_data = opp_data or {}
+        deal_name = opp_data.get('name')
+        if not deal_name:
+            deal_name = f"{company.name} - Initial Opportunity"
+
         amount = opp_data.get('amount', 0.00)
         expected_close_date = opp_data.get('expected_close_date')
         if not expected_close_date:
             expected_close_date = timezone.now().date() + timedelta(days=30)
+
+        opp_description = opp_data.get('description')
+        if opp_description is None:
+            opp_description = lead.notes or ""
+
+        opp_priority = lead.priority or 'MEDIUM'
 
         # Find conversion stage of lead's pipeline
         conversion_stage = None
@@ -197,7 +213,7 @@ class LeadWorkflowService:
 
         # 3. Create Opportunity
         opp = Opportunity.objects.create(
-            name=f"{company.name} - Initial Opportunity",
+            name=deal_name,
             company=company,
             source_lead=lead,
             primary_contact=contact,
@@ -205,9 +221,10 @@ class LeadWorkflowService:
             lead_source=lead.source,
             amount=amount,
             expected_close_date=expected_close_date,
-            description=lead.notes or "",
+            description=opp_description,
             pipeline=lead.pipeline,
             pipeline_stage=conversion_stage,
+            priority=opp_priority,
             custom_values=custom_values
         )
 

@@ -335,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Stage CRUD Actions ---
     function openStageDrawer(stage = null) {
+        const stageOrderContainer = document.getElementById('stageOrderContainer');
         if (stage) {
             stageDrawerTitle.textContent = "Edit Stage Settings";
             stageIdInput.value = stage.id;
@@ -342,13 +343,15 @@ document.addEventListener('DOMContentLoaded', () => {
             stageOrderInput.value = stage.order;
             stageColorInput.value = stage.color || "#6c757d";
             stageColorPicker.value = stage.color || "#6c757d";
+            if (stageOrderContainer) stageOrderContainer.classList.remove('d-none');
         } else {
             stageDrawerTitle.textContent = "Create Stage Settings";
             stageIdInput.value = "";
             stageNameInput.value = "";
-            stageOrderInput.value = "0";
+            stageOrderInput.value = "";
             stageColorInput.value = "#6c757d";
             stageColorPicker.value = "#6c757d";
+            if (stageOrderContainer) stageOrderContainer.classList.add('d-none');
         }
         bsStageDrawer.show();
     }
@@ -367,9 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = {
                 pipeline: activePipelineId,
                 name: stageNameInput.value.trim(),
-                order: parseInt(stageOrderInput.value),
                 color: stageColorInput.value
             };
+            if (id) {
+                payload.order = parseInt(stageOrderInput.value);
+            }
 
             try {
                 let res;

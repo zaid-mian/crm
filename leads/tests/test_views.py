@@ -254,8 +254,8 @@ class LeadViewSetTestCase(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data["data"]["results"]), 3)
 
-    def test_view_create_lead_with_email_only_success(self):
-        """Verify lead creation succeeds with email only (phone optional)."""
+    def test_view_create_lead_missing_phone_fails(self):
+        """Verify lead creation fails when phone is missing."""
         self.client.force_authenticate(user=self.admin)
         payload = {
             "full_name": "Email Only Lead",
@@ -263,9 +263,8 @@ class LeadViewSetTestCase(APITestCase):
             "email": "onlyemail@example.com"
         }
         response = self.client.post(self.list_url, data=payload)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["data"]["full_name"], "Email Only Lead")
-        self.assertEqual(response.data["data"]["phone"], "")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
 
     def test_view_create_lead_with_phone_only_success(self):
         """Verify lead creation succeeds with phone only (email optional)."""

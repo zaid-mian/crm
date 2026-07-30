@@ -132,13 +132,24 @@
                 <div class="modal-body p-4">
                     <div id="conversionAlertContainer" class="mb-3"></div>
                     <form id="conversionForm">
+                        <div id="conversionSummaryContainer" class="p-3 mb-3 border rounded bg-light" style="font-size: 0.9rem;">
+                            <!-- Dynamically populated summary fields -->
+                        </div>
                         <div class="mb-3">
-                            <label for="convOppAmount" class="form-label font-weight-medium">Deal Amount ($)</label>
+                            <label for="convOppDealName" class="form-label font-weight-medium">Deal Name *</label>
+                            <input type="text" class="form-control" id="convOppDealName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convOppAmount" class="form-label font-weight-medium">Deal Amount ($) *</label>
                             <input type="number" step="0.01" class="form-control" id="convOppAmount" value="0.00" required>
                         </div>
                         <div class="mb-3">
-                            <label for="convOppCloseDate" class="form-label font-weight-medium">Expected Close Date</label>
+                            <label for="convOppCloseDate" class="form-label font-weight-medium">Expected Close Date *</label>
                             <input type="date" class="form-control" id="convOppCloseDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="convOppDescription" class="form-label font-weight-medium">Description</label>
+                            <textarea class="form-control" id="convOppDescription" rows="2"></textarea>
                         </div>
                         
                         <!-- Container to dynamically render custom opportunity fields -->

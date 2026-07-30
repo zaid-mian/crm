@@ -16,6 +16,8 @@ class OpportunityFilter(django_filters.FilterSet):
         model = Opportunity
         fields = {
             'stage': ['exact', 'in'],
+            'pipeline_stage': ['exact', 'in'],
+            'pipeline_stage__stage_type': ['exact', 'in'],
             'assigned_salesperson': ['exact', 'isnull'],
             'lead_source': ['exact', 'in'],
         }

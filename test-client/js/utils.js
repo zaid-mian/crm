@@ -135,6 +135,15 @@ class UIUtils {
             }
         }
 
+        let isAdminOrManager = false;
+        try {
+            const meRes = await APIClient.get('/api/me/');
+            const meData = meRes.data || meRes;
+            isAdminOrManager = meData.user_type === 'ADMIN';
+        } catch (e) {
+            console.error("Failed to load user profile via /api/me/:", e);
+        }
+
         // Render form
         bodyEl.innerHTML = `
             <form id="leadForm">
@@ -144,8 +153,8 @@ class UIUtils {
                 </div>
                 <div class="row mb-3">
                     <div class="col">
-                        <label class="form-label font-weight-medium">Phone Number</label>
-                        <input type="text" class="form-control" name="phone" placeholder="+15551234">
+                        <label class="form-label font-weight-medium">Phone Number *</label>
+                        <input type="text" class="form-control" name="phone" placeholder="+15551234" required>
                     </div>
                     <div class="col">
                         <label class="form-label font-weight-medium">Email Address</label>
@@ -156,29 +165,31 @@ class UIUtils {
                     <label class="form-label font-weight-medium">Company Name *</label>
                     <input type="text" class="form-control" name="company_name" required>
                 </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Lead Source</label>
-                        <select class="form-select" name="source">
-                            <option value="WEBSITE">Website</option>
-                            <option value="FACEBOOK">Facebook</option>
-                            <option value="GOOGLE_ADS">Google Ads</option>
-                            <option value="REFERRAL">Referral</option>
-                            <option value="WALK_IN">Walk-in</option>
-                            <option value="PHONE_CALL">Phone Call</option>
-                            <option value="EMAIL_CAMPAIGN">Email Campaign</option>
-                            <option value="OTHER" selected>Other</option>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label class="form-label font-weight-medium">Priority</label>
-                        <select class="form-select" name="priority">
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM" selected>Medium</option>
-                            <option value="HIGH">High</option>
-                        </select>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label font-weight-medium">Lead Source</label>
+                    <select class="form-select" name="source">
+                        <option value="WEBSITE">Website</option>
+                        <option value="FACEBOOK">Facebook</option>
+                        <option value="GOOGLE_ADS">Google Ads</option>
+                        <option value="REFERRAL">Referral</option>
+                        <option value="WALK_IN">Walk-in</option>
+                        <option value="PHONE_CALL">Phone Call</option>
+                        <option value="EMAIL_CAMPAIGN">Email Campaign</option>
+                        <option value="OTHER" selected>Other</option>
+                    </select>
                 </div>
+                ${isAdminOrManager ? `
+                <div class="mb-3">
+                    <label class="form-label font-weight-medium">Assigned Salesperson</label>
+                    <select class="form-select" name="assigned_salesperson">
+                        <option value="">Unassigned</option>
+                        <option value="1">Admin</option>
+                        <option value="2">Sales Manager</option>
+                        <option value="3">Salesperson 1</option>
+                        <option value="4">Salesperson 2</option>
+                    </select>
+                </div>
+                ` : ''}
                 <div class="mb-3">
                     <label class="form-label font-weight-medium">Pipeline *</label>
                     <select class="form-select" name="pipeline" id="leadFormPipelineSelect" required>
@@ -280,6 +291,11 @@ class UIUtils {
             const body = Object.fromEntries(formData.entries());
             if (body.pipeline) {
                 body.pipeline = parseInt(body.pipeline);
+            }
+            if (body.assigned_salesperson) {
+                body.assigned_salesperson = parseInt(body.assigned_salesperson, 10);
+            } else {
+                delete body.assigned_salesperson;
             }
 
             try {

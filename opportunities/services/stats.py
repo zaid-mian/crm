@@ -1,6 +1,6 @@
 from django.db.models import Sum, Avg, Count, Q
 from decimal import Decimal
-from opportunities.models import Opportunity, OpportunityStage
+from opportunities.models import Opportunity
 
 class OpportunityStatsService:
     @staticmethod
@@ -10,10 +10,10 @@ class OpportunityStatsService:
         """
         counts = queryset.aggregate(
             total=Count('id'),
-            open_count=Count('id', filter=~Q(stage__in=[OpportunityStage.CLOSED_WON, OpportunityStage.CLOSED_LOST])),
-            won_count=Count('id', filter=Q(stage=OpportunityStage.CLOSED_WON)),
-            lost_count=Count('id', filter=Q(stage=OpportunityStage.CLOSED_LOST)),
-            pipeline_sum=Sum('amount', filter=~Q(stage__in=[OpportunityStage.CLOSED_WON, OpportunityStage.CLOSED_LOST])),
+            open_count=Count('id', filter=~Q(pipeline_stage__stage_type__in=['WON', 'LOST'])),
+            won_count=Count('id', filter=Q(pipeline_stage__stage_type='WON')),
+            lost_count=Count('id', filter=Q(pipeline_stage__stage_type='LOST')),
+            pipeline_sum=Sum('amount', filter=~Q(pipeline_stage__stage_type__in=['WON', 'LOST'])),
             avg_size=Avg('amount')
         )
         
@@ -26,7 +26,7 @@ class OpportunityStatsService:
         
         # Calculate expected revenue for open deals dynamically based on stage mapping
         open_deals_list = queryset.filter(
-            ~Q(stage__in=[OpportunityStage.CLOSED_WON, OpportunityStage.CLOSED_LOST])
+            ~Q(pipeline_stage__stage_type__in=['WON', 'LOST'])
         )
         expected_revenue = Decimal('0.00')
         for deal in open_deals_list:

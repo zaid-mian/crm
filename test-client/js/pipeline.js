@@ -742,10 +742,48 @@ document.addEventListener('DOMContentLoaded', () => {
         conversionAlertContainer.innerHTML = '';
         
         // Reset defaults
+        document.getElementById('convOppDealName').value = "";
+        document.getElementById('convOppDescription').value = "";
         convOppAmount.value = "0.00";
         const defaultDate = new Date();
         defaultDate.setDate(defaultDate.getDate() + 30);
         convOppCloseDate.value = defaultDate.toISOString().substring(0, 10);
+
+        try {
+            const leadRes = await APIClient.get(`/api/leads/${leadId}/`);
+            const lead = leadRes.data || leadRes;
+            if (lead) {
+                const companyName = lead.company_name || '';
+                document.getElementById('convOppDealName').value = companyName ? `${companyName} - Initial Opportunity` : '';
+                document.getElementById('convOppDescription').value = lead.notes || '';
+
+                // Populate read-only summary container
+                const summaryContainer = document.getElementById('conversionSummaryContainer');
+                if (summaryContainer) {
+                    const salespersonObj = users.find(u => u.id === lead.assigned_salesperson);
+                    const salespersonName = salespersonObj ? salespersonObj.name : 'Unassigned';
+                    summaryContainer.innerHTML = `
+                        <div class="fw-bold text-secondary mb-2 small text-uppercase">Auto-linked Records Summary</div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <span class="text-muted d-block small">Company to Link/Create</span>
+                                <span class="fw-semibold text-dark">${lead.company_name || 'N/A'}</span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block small">Contact to Link/Create</span>
+                                <span class="fw-semibold text-dark">${lead.full_name || 'N/A'}</span>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <span class="text-muted d-block small">Assigned Salesperson</span>
+                                <span class="fw-semibold text-dark">${salespersonName}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load lead details for conversion:", e);
+        }
 
         dynamicFormFieldsContainer.innerHTML = '<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Checking custom form fields...</div>';
         
@@ -841,6 +879,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     confirmConversionBtn.addEventListener('click', async () => {
+        const dealName = document.getElementById('convOppDealName').value.trim();
+        if (!dealName) {
+            UIUtils.showAlert('conversionAlertContainer', 'Deal name is required.', 'danger');
+            return;
+        }
+
         const amount = parseFloat(convOppAmount.value);
         if (isNaN(amount) || amount < 0) {
             UIUtils.showAlert('conversionAlertContainer', 'Deal amount must be a positive number.', 'danger');
@@ -851,6 +895,8 @@ document.addEventListener('DOMContentLoaded', () => {
             UIUtils.showAlert('conversionAlertContainer', 'Expected close date is required.', 'danger');
             return;
         }
+
+        const description = document.getElementById('convOppDescription').value.trim();
 
         const customValues = {};
         const inputs = dynamicFormFieldsContainer.querySelectorAll('.custom-form-field-input');
@@ -900,8 +946,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: activeConversionLeadId,
                 target_stage_id: activeConversionTargetStageId,
                 opp_data: {
+                    name: dealName,
                     amount: amount,
-                    expected_close_date: closeDate
+                    expected_close_date: closeDate,
+                    description: description
                 },
                 custom_values: customValues
             });

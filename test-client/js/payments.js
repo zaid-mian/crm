@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formCompany.innerHTML += `<option value="${c.id}">${c.name}</option>`;
         });
 
-        const oppRes = await window.APIClient.get('/api/opportunities/?page_size=100&stage=CLOSED_WON');
+        const oppRes = await window.APIClient.get('/api/opportunities/?page_size=100&pipeline_stage__stage_type=WON');
         opportunities = oppRes.data?.results || [];
         refreshOpportunityOptions();
     }

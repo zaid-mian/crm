@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from opportunities.models import Opportunity, OpportunityStage
+from opportunities.models import Opportunity
 from payments.models import Payment
 from payments.services.activity import PaymentActivityService
 
@@ -11,7 +11,7 @@ from payments.services.activity import PaymentActivityService
 class PaymentInvoiceService:
     @staticmethod
     def _validate_opportunity(opportunity: Opportunity) -> None:
-        if opportunity.stage != OpportunityStage.CLOSED_WON:
+        if not opportunity.won:
             raise ValidationError('Invoice can only be generated for won opportunities.')
 
     @staticmethod

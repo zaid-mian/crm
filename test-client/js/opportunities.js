@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchTimeout = null;
     let activeOpportunityId = null;
 
+    let allStages = [];
+    let stagesMap = {}; // id -> stage object
+
     // --- UI Elements ---
     const searchBox = document.getElementById('searchBox');
     const filterStage = document.getElementById('filterStage');
@@ -38,16 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const UIUtils = {
-        formatStage: (stage) => {
-            const mappings = {
-                'QUALIFICATION': '<span class="badge bg-secondary">Qualification</span>',
-                'DISCOVERY': '<span class="badge bg-info text-dark">Discovery</span>',
-                'PROPOSAL': '<span class="badge bg-primary">Proposal</span>',
-                'NEGOTIATION': '<span class="badge bg-warning text-dark">Negotiation</span>',
-                'CLOSED_WON': '<span class="badge bg-success">Closed Won</span>',
-                'CLOSED_LOST': '<span class="badge bg-danger">Closed Lost</span>'
-            };
-            return mappings[stage] || `<span class="badge bg-light text-dark">${stage}</span>`;
+        formatStage: (stageId) => {
+            const stageObj = stagesMap[stageId];
+            if (stageObj) {
+                const color = stageObj.color || '#6c757d';
+                return `<span class="badge" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44;">${stageObj.name}</span>`;
+            }
+            return `<span class="badge bg-secondary">${stageId || 'Unknown'}</span>`;
         },
         showAlert: (containerId, message, type = 'success') => {
             const container = document.getElementById(containerId);
@@ -90,7 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show/hide lost reason depending on Stage choice
     stageSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'CLOSED_LOST') {
+        const stageId = parseInt(e.target.value);
+        const stageObj = stagesMap[stageId];
+        if (stageObj && stageObj.stage_type === 'LOST') {
             lostReasonGroup.classList.remove('d-none');
             lostReasonSelect.required = true;
         } else {
@@ -100,6 +102,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Core API Loading Methods ---
+    async function loadStages() {
+        try {
+            const res = await APIClient.get('/api/pipeline/stages/');
+            allStages = res.hasOwnProperty('success') ? res.data : (res.results || res || []);
+            stagesMap = {};
+            allStages.forEach(s => {
+                stagesMap[s.id] = s;
+            });
+            const oppStages = allStages.filter(s => s.entity_type === 'OPPORTUNITY');
+            filterStage.innerHTML = '<option value="">All Stages</option>' + 
+                oppStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        } catch (err) {
+            console.error('Failed to load stages:', err);
+        }
+    }
+
     async function loadOpportunities() {
         let url = `/api/opportunities/?page=${currentPage}&ordering=${currentOrdering}`;
         
@@ -107,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (search) url += `&search=${encodeURIComponent(search)}`;
         
         const stage = filterStage.value;
-        if (stage) url += `&stage=${stage}`;
+        if (stage) url += `&pipeline_stage=${stage}`;
         
         const source = filterSource.value;
         if (source) url += `&lead_source=${source}`;
@@ -140,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let url = '/api/opportunities/stats/';
         
         const stage = filterStage.value;
-        if (stage) url += `?stage=${stage}`;
+        if (stage) url += `?pipeline_stage=${stage}`;
         
         const source = filterSource.value;
         if (source) url += `${stage ? '&' : '?'}lead_source=${source}`;
@@ -182,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td style="padding-left: 1.5rem;" class="font-monospace text-muted small">${opp.opportunity_code || 'N/A'}</td>
                 <td class="font-weight-semibold text-dark">${opp.name}</td>
                 <td>${opp.company_name}</td>
-                <td>${UIUtils.formatStage(opp.stage)}</td>
+                <td>${UIUtils.formatStage(opp.pipeline_stage)}</td>
                 <td class="font-weight-medium">${formatCurrency(opp.amount)}</td>
                 <td class="small text-secondary">${opp.expected_close_date}</td>
                 <td class="small text-muted">User ID: ${opp.assigned_salesperson || 'Unassigned'}</td>
@@ -224,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="card bg-light border-0 p-4 mb-4">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <span class="font-monospace text-muted small">${opp.opportunity_code || 'N/A'}</span>
-                            ${UIUtils.formatStage(opp.stage)}
+                            ${UIUtils.formatStage(opp.pipeline_stage)}
                         </div>
                         <h4 class="text-dark font-weight-bold mb-3">${opp.name}</h4>
                         <div class="row g-3">
@@ -288,14 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Bind drawer buttons
                 document.getElementById('viewStageBtn').addEventListener('click', () => {
-                    // Populate current values in modal
-                    stageSelect.value = opp.stage;
-                    if (opp.stage === 'CLOSED_LOST') {
-                        lostReasonGroup.classList.remove('d-none');
-                        lostReasonSelect.value = opp.lost_reason || '';
-                    } else {
-                        lostReasonGroup.classList.add('d-none');
-                    }
+                    populateStageSelect(opp);
                     leadDrawer.hide();
                     setTimeout(() => stageModal.show(), 300);
                 });
@@ -309,6 +320,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             UIUtils.showAlert('mainAlertContainer', UIUtils.formatAPIError(error), 'danger');
+        }
+    }
+
+    function populateStageSelect(opp) {
+        const oppStages = allStages.filter(s => s.pipeline === opp.pipeline && s.entity_type === 'OPPORTUNITY');
+        stageSelect.innerHTML = oppStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        stageSelect.value = opp.pipeline_stage;
+
+        const currentStageObj = stagesMap[opp.pipeline_stage];
+        if (currentStageObj && currentStageObj.stage_type === 'LOST') {
+            lostReasonGroup.classList.remove('d-none');
+            lostReasonSelect.value = opp.lost_reason || '';
+        } else {
+            lostReasonGroup.classList.add('d-none');
         }
     }
 
@@ -378,13 +403,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Form Modal Submit ---
     stageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const stage = stageSelect.value;
-        const lost_reason = stage === 'CLOSED_LOST' ? lostReasonSelect.value : '';
+        const stageId = parseInt(stageSelect.value);
+        const stageObj = stagesMap[stageId];
+        const lost_reason = (stageObj && stageObj.stage_type === 'LOST') ? lostReasonSelect.value : '';
 
         try {
-            const response = await APIClient.post(`/api/opportunities/${activeOpportunityId}/change-stage/`, {
-                stage,
-                lost_reason
+            const response = await APIClient.patch(`/api/opportunities/${activeOpportunityId}/`, {
+                pipeline_stage: stageId,
+                lost_reason: lost_reason
             });
             rawResponseEl.innerText = JSON.stringify(response, null, 2);
             if (response.success) {
@@ -445,6 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initial Execution ---
-    loadOpportunities();
-    loadStats();
+    async function init() {
+        await loadStages();
+        loadOpportunities();
+        loadStats();
+    }
+    init();
 });

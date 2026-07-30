@@ -85,6 +85,7 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     Restricts input to basic ingestion fields.
     """
     lead_code = serializers.CharField(read_only=True)
+    phone = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
         model = Lead
@@ -100,10 +101,15 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             'notes',
             'pipeline',
             'pipeline_stage',
+            'assigned_salesperson',
         ]
         read_only_fields = ['id', 'lead_code', 'pipeline_stage']
 
     def validate(self, attrs):
+        # Default priority to MEDIUM on the backend when not provided
+        if not attrs.get('priority'):
+            attrs['priority'] = Lead.Priority.MEDIUM
+
         email = attrs.get('email')
         phone = attrs.get('phone')
         if not email and not phone:
@@ -127,6 +133,13 @@ class LeadCreateSerializer(serializers.ModelSerializer):
 
         attrs['pipeline'] = pipeline
         attrs['pipeline_stage'] = first_stage
+
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            from leads.permissions import is_manager_or_admin
+            if not is_manager_or_admin(request.user):
+                attrs['assigned_salesperson'] = request.user
+
         return attrs
 
     def create(self, validated_data):
