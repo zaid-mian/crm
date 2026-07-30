@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'companies',
     'pipeline',
     'payments',
+    'dashboard',
     'corsheaders',
 ]
 
