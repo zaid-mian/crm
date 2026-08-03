@@ -3,11 +3,11 @@ from rest_framework import mixins, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from roles.permissions import DynamicCRMPermission, get_scoped_queryset
 
 from opportunities.models import Opportunity
 from opportunities.services import OpportunityQueryService, OpportunityStatsService, OpportunityWorkflowService
 from opportunities.filters import OpportunityFilter, OpportunitySearchFilter
-from opportunities.permissions import IsOpportunityOwnerOrManager
 from opportunities.serializers import (
     OpportunityListSerializer,
     OpportunityDetailSerializer,
@@ -51,6 +51,9 @@ class OpportunityViewSet(
     OpportunityViewSet coordinating list, retrieve, update, and custom operations.
     """
     queryset = Opportunity.objects.all()
+    permission_classes = [IsAuthenticated, DynamicCRMPermission]
+    resource_codename = 'opportunities'
+    owner_field = 'assigned_salesperson'
     pagination_class = OpportunityPagination
     filter_backends = [DjangoFilterBackend, OpportunitySearchFilter, filters.OrderingFilter]
     filterset_class = OpportunityFilter
@@ -58,16 +61,8 @@ class OpportunityViewSet(
     ordering = ['-created_at']
     search_fields = ['name', 'company__name']
 
-    def get_permissions(self):
-        """
-        Salespeople and Managers must be authenticated.
-        Row-level security applies on retrieve and update.
-        """
-        if self.action in ['retrieve', 'update', 'partial_update', 'change_stage']:
-            permission_classes = [IsAuthenticated, IsOpportunityOwnerOrManager]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
+    def get_queryset(self):
+        return OpportunityQueryService.get_visible_opportunities(self.request.user)
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -77,8 +72,7 @@ class OpportunityViewSet(
         return OpportunityDetailSerializer
 
     def list(self, request, *args, **kwargs):
-        queryset = OpportunityQueryService.get_visible_opportunities(request.user)
-        queryset = self.filter_queryset(queryset)
+        queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
         if page is not None:

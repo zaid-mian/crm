@@ -11,8 +11,5 @@ class ContactQueryService:
         # Optimize query execution by pre-fetching salesperson relation
         base_queryset = base_queryset.select_related('assigned_salesperson')
 
-        from contacts.permissions import is_manager_or_admin
-        if not is_manager_or_admin(user):
-            # Salesperson sees only assigned contacts
-            return base_queryset.filter(assigned_salesperson=user)
-        return base_queryset
+        from roles.permissions import get_scoped_queryset
+        return get_scoped_queryset(base_queryset, user, resource_codename='contacts', owner_field='assigned_salesperson')

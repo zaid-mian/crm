@@ -3,10 +3,10 @@ from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from roles.permissions import DynamicCRMPermission, get_scoped_queryset
 
 from payments.filters.payment import PaymentFilter, PaymentSearchFilter
 from payments.models import Payment
-from payments.permissions.payment import PaymentPermission
 from payments.serializers.payment import (
     GenerateInvoiceSerializer,
     PaymentDetailSerializer,
@@ -47,7 +47,9 @@ class PaymentPagination(PageNumberPagination):
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all().distinct()
-    permission_classes = [IsAuthenticated, PaymentPermission]
+    permission_classes = [IsAuthenticated, DynamicCRMPermission]
+    resource_codename = 'payments'
+    owner_field = 'assigned_salesperson'
     pagination_class = PaymentPagination
     filter_backends = [DjangoFilterBackend, PaymentSearchFilter, filters.OrderingFilter]
     filterset_class = PaymentFilter
@@ -61,6 +63,24 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return qs.prefetch_related('transactions', 'activity_logs').distinct()
         return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'payments', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=user)
+        else:
+            return serializer.save()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'payments', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=serializer.instance.assigned_salesperson)
+        else:
+            return serializer.save()
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -90,7 +110,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        payment = serializer.save()
+        payment = self.perform_create(serializer)
         out = PaymentDetailSerializer(payment, context={'request': request})
         return api_success(
             data=out.data,
@@ -103,7 +123,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        payment = serializer.save()
+        payment = self.perform_update(serializer)
         out = PaymentDetailSerializer(payment, context={'request': request})
         return api_success(data=out.data, message='Payment updated successfully.')
 
@@ -116,7 +136,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def generate_invoice(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        payment = serializer.save()
+        payment = self.perform_create(serializer)
         out = PaymentDetailSerializer(payment, context={'request': request})
         return api_success(
             data=out.data,

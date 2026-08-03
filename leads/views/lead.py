@@ -3,6 +3,7 @@ from rest_framework import mixins, viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from roles.permissions import DynamicCRMPermission, get_scoped_queryset
 
 from leads.models import Lead
 from leads.services import LeadQueryService, LeadStatsService, LeadWorkflowService
@@ -58,7 +59,9 @@ class LeadViewSet(
     Delegates query logic to LeadQueryService and transitions to LeadWorkflowService.
     """
     queryset = Lead.objects.all()
-    permission_classes = [IsAuthenticated, IsLeadOwnerOrManager]
+    permission_classes = [IsAuthenticated, DynamicCRMPermission]
+    resource_codename = 'leads'
+    owner_field = 'assigned_salesperson'
     pagination_class = LeadPagination
     
     # Filter engine registration
@@ -79,7 +82,16 @@ class LeadViewSet(
 
     def get_queryset(self):
         qs = super().get_queryset()
-        return LeadQueryService.get_visible_leads(self.request.user, qs)
+        return get_scoped_queryset(qs, self.request.user, resource_codename='leads', owner_field='assigned_salesperson')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'leads', 'ASSIGN')
+        if scope == 'NONE':
+            serializer.save(assigned_salesperson=user)
+        else:
+            serializer.save()
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, LeadListSerializer)
@@ -148,7 +160,7 @@ class LeadViewSet(
         )
 
     # Custom Action: Assign Lead
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrSalesManager])
+    @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
         lead = self.get_object()
         serializer = LeadAssignSerializer(data=request.data)
@@ -169,7 +181,7 @@ class LeadViewSet(
         )
 
     # Custom Action: Convert Lead
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrSalesManager])
+    @action(detail=True, methods=['post'])
     def convert(self, request, pk=None):
         lead = self.get_object()
         opp_data = request.data.get('opp_data')

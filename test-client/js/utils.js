@@ -165,6 +165,36 @@ class UIUtils {
                     <label class="form-label font-weight-medium">Company Name *</label>
                     <input type="text" class="form-control" name="company_name" required>
                 </div>
+                <!-- Company Information section -->
+                <div class="card bg-light border p-3 mb-3">
+                    <h6 class="font-weight-semibold mb-2" style="font-size: 0.85rem;">Company Information</h6>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Website</label>
+                        <input type="url" class="form-control form-control-sm" name="website" placeholder="https://example.com">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Industry</label>
+                        <select class="form-select form-select-sm" name="industry">
+                            <option value="TECHNOLOGY">Technology</option>
+                            <option value="FINANCE">Finance</option>
+                            <option value="HEALTHCARE">Healthcare</option>
+                            <option value="EDUCATION">Education</option>
+                            <option value="RETAIL">Retail</option>
+                            <option value="MANUFACTURING">Manufacturing</option>
+                            <option value="OTHER" selected>Other</option>
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label small mb-1">Employees</label>
+                            <input type="number" class="form-control form-control-sm" name="employee_count" min="0">
+                        </div>
+                        <div class="col">
+                            <label class="form-label small mb-1">Annual Revenue</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="annual_revenue" min="0">
+                        </div>
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label font-weight-medium">Lead Source</label>
                     <select class="form-select" name="source">
@@ -296,6 +326,16 @@ class UIUtils {
                 body.assigned_salesperson = parseInt(body.assigned_salesperson, 10);
             } else {
                 delete body.assigned_salesperson;
+            }
+            if (body.employee_count) {
+                body.employee_count = parseInt(body.employee_count, 10);
+            } else {
+                delete body.employee_count;
+            }
+            if (body.annual_revenue) {
+                body.annual_revenue = parseFloat(body.annual_revenue);
+            } else {
+                delete body.annual_revenue;
             }
 
             try {

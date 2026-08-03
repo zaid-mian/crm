@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'pipeline',
     'payments',
     'corsheaders',
+    'roles',
 ]
 
 MIDDLEWARE = [

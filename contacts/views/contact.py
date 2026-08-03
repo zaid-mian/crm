@@ -2,11 +2,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets, status, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from roles.permissions import DynamicCRMPermission, get_scoped_queryset
 
 from contacts.models import Contact
 from contacts.services import ContactQueryService
 from contacts.filters import ContactFilter, ContactSearchFilter
-from contacts.permissions import IsContactOwnerOrManager
 from contacts.utils.responses import api_success
 from contacts.serializers import (
     ContactListSerializer,
@@ -50,7 +50,9 @@ class ContactViewSet(
     viewsets.GenericViewSet
 ):
     queryset = Contact.objects.filter(is_deleted=False).select_related('company', 'assigned_salesperson')
-    permission_classes = [IsAuthenticated, IsContactOwnerOrManager]
+    permission_classes = [IsAuthenticated, DynamicCRMPermission]
+    resource_codename = 'contacts'
+    owner_field = 'assigned_salesperson'
     pagination_class = ContactPagination
 
     filter_backends = [DjangoFilterBackend, ContactSearchFilter, filters.OrderingFilter]
@@ -70,6 +72,24 @@ class ContactViewSet(
     def get_queryset(self):
         qs = super().get_queryset()
         return ContactQueryService.get_visible_contacts(self.request.user, qs)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'contacts', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=user)
+        else:
+            return serializer.save()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'contacts', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=serializer.instance.assigned_salesperson)
+        else:
+            return serializer.save()
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, ContactListSerializer)
@@ -98,7 +118,7 @@ class ContactViewSet(
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        contact = serializer.save()
+        contact = self.perform_create(serializer)
         
         detail_serializer = ContactDetailSerializer(contact)
         return api_success(
@@ -112,7 +132,7 @@ class ContactViewSet(
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        contact = serializer.save()
+        contact = self.perform_update(serializer)
 
         detail_serializer = ContactDetailSerializer(contact)
         return api_success(

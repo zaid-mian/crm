@@ -16,10 +16,5 @@ class PaymentQueryService:
             'assigned_salesperson',
         )
 
-        if not user or not user.is_authenticated:
-            return Payment.objects.none()
-
-        if is_manager_or_admin(user):
-            return queryset
-
-        return queryset.filter(assigned_salesperson=user)
+        from roles.permissions import get_scoped_queryset
+        return get_scoped_queryset(queryset, user, resource_codename='payments', owner_field='assigned_salesperson')

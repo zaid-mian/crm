@@ -59,7 +59,7 @@ class OpportunityViewsTestCase(APITestCase):
         """Verify non-owners are blocked from retrieving detail view."""
         self.client.force_authenticate(user=self.salesperson2)
         response = self.client.get(self.detail_url(self.opp.pk))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         self.client.force_authenticate(user=self.salesperson1)
         response = self.client.get(self.detail_url(self.opp.pk))
