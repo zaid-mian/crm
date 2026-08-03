@@ -9,8 +9,5 @@ class OpportunityQueryService:
         Admins/Managers see all; Salespeople see only their assigned deals.
         """
         queryset = Opportunity.objects.all().select_related('assigned_salesperson', 'primary_contact', 'source_lead')
-        
-        if user.is_superuser or getattr(user, 'is_staff', False):
-            return queryset
-            
-        return queryset.filter(assigned_salesperson=user)
+        from roles.permissions import get_scoped_queryset
+        return get_scoped_queryset(queryset, user, resource_codename='opportunities', owner_field='assigned_salesperson')

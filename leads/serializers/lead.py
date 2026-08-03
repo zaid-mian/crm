@@ -19,6 +19,10 @@ class LeadListSerializer(serializers.ModelSerializer):
             'phone',
             'email',
             'company_name',
+            'website',
+            'industry',
+            'employee_count',
+            'annual_revenue',
             'source',
             'priority',
             'status',
@@ -50,6 +54,10 @@ class LeadDetailSerializer(serializers.ModelSerializer):
             'phone',
             'email',
             'company_name',
+            'website',
+            'industry',
+            'employee_count',
+            'annual_revenue',
             'source',
             'priority',
             'status',
@@ -96,6 +104,10 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             'phone',
             'email',
             'company_name',
+            'website',
+            'industry',
+            'employee_count',
+            'annual_revenue',
             'source',
             'priority',
             'notes',
@@ -133,12 +145,6 @@ class LeadCreateSerializer(serializers.ModelSerializer):
 
         attrs['pipeline'] = pipeline
         attrs['pipeline_stage'] = first_stage
-
-        request = self.context.get('request')
-        if request and request.user and request.user.is_authenticated:
-            from leads.permissions import is_manager_or_admin
-            if not is_manager_or_admin(request.user):
-                attrs['assigned_salesperson'] = request.user
 
         return attrs
 
@@ -185,6 +191,10 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
             'phone',
             'email',
             'company_name',
+            'website',
+            'industry',
+            'employee_count',
+            'annual_revenue',
             'source',
             'priority',
             'notes',

@@ -320,3 +320,31 @@ class LeadServicesTestCase(TestCase):
         self.assertEqual(contact_1, contact_2)
         self.assertEqual(contact_1.phone_number, "+555001") # Not overwritten by "+555002"
 
+    def test_workflow_convert_copies_enriched_company_fields(self):
+        """Verify converting lead with website, industry, employee count, and revenue populates Company."""
+        from companies.models import Company
+
+        lead = Lead.objects.create(
+            full_name="Enriched Lead",
+            phone="+999333",
+            email="enriched@example.com",
+            company_name="Enriched Industry Inc",
+            website="https://enriched.com",
+            industry="TECHNOLOGY",
+            employee_count=150,
+            annual_revenue=1200000.00,
+            status=Lead.LeadStatus.NEW,
+            assigned_salesperson=self.sales_a
+        )
+        
+        LeadWorkflowService.convert_lead(lead)
+        lead.refresh_from_db()
+
+        self.assertIsNotNone(lead.converted_company)
+        comp = lead.converted_company
+        self.assertEqual(comp.name, "Enriched Industry Inc")
+        self.assertEqual(comp.website, "https://enriched.com")
+        self.assertEqual(comp.industry, "TECHNOLOGY")
+        self.assertEqual(comp.employee_count, 150)
+        self.assertEqual(float(comp.annual_revenue), 1200000.00)
+

@@ -50,6 +50,10 @@ class Lead(models.Model):
     phone = models.CharField(max_length=20, db_index=True, blank=True, default='', help_text="Phone number for the lead.")
     email = models.EmailField(blank=True, null=True, db_index=True)
     company_name = models.CharField(max_length=255, help_text="Prospect company name as text.")
+    website = models.URLField(blank=True, default='', help_text="Company website URL.")
+    industry = models.CharField(max_length=50, blank=True, default='OTHER', help_text="Industry of the company.")
+    employee_count = models.IntegerField(null=True, blank=True, help_text="Number of employees.")
+    annual_revenue = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Annual revenue.")
     
     # Metadata & Categorization
     source = models.CharField(
@@ -200,6 +204,7 @@ class UserProfile(models.Model):
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='USER')
+    role = models.ForeignKey('roles.Role', on_delete=models.SET_NULL, null=True, blank=True, related_name='profiles')
 
     def __str__(self):
         return f"{self.user.username} - {self.user_type}"
@@ -207,11 +212,19 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance, user_type='ADMIN' if instance.is_superuser or instance.is_staff else 'USER')
+        from roles.services import RoleService
+        u_type = 'ADMIN' if instance.is_superuser or instance.is_staff else 'USER'
+        role_name = 'Administrator' if u_type == 'ADMIN' else 'Salesperson'
+        role_obj = RoleService.get_default_role(role_name)
+        UserProfile.objects.create(user=instance, user_type=u_type, role=role_obj)
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'profile'):
-        UserProfile.objects.create(user=instance, user_type='ADMIN' if instance.is_superuser or instance.is_staff else 'USER')
+        from roles.services import RoleService
+        u_type = 'ADMIN' if instance.is_superuser or instance.is_staff else 'USER'
+        role_name = 'Administrator' if u_type == 'ADMIN' else 'Salesperson'
+        role_obj = RoleService.get_default_role(role_name)
+        UserProfile.objects.create(user=instance, user_type=u_type, role=role_obj)
     else:
         instance.profile.save()

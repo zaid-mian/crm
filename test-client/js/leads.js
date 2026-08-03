@@ -373,6 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="mb-2 font-monospace text-muted small">${lead.lead_code || 'N/A'}</div>
                             <h4 class="mb-3 text-dark">${lead.full_name}</h4>
                             <div class="mb-2"><strong>Company:</strong> ${lead.company_name}</div>
+                            ${lead.website ? `<div class="mb-2"><strong>Website:</strong> <a href="${lead.website}" target="_blank" class="small text-truncate d-inline-block" style="max-width: 180px; vertical-align: bottom;">${lead.website}</a></div>` : ''}
+                            ${lead.industry && lead.industry !== 'OTHER' ? `<div class="mb-2"><strong>Industry:</strong> ${lead.industry}</div>` : ''}
+                            ${lead.employee_count ? `<div class="mb-2"><strong>Employees:</strong> ${lead.employee_count}</div>` : ''}
+                            ${lead.annual_revenue ? `<div class="mb-2"><strong>Annual Revenue:</strong> $${parseFloat(lead.annual_revenue).toLocaleString()}</div>` : ''}
                             <div class="mb-2"><strong>Phone:</strong> ${lead.phone}</div>
                             <div class="mb-2"><strong>Email:</strong> ${lead.email || 'None'}</div>
                             <div class="mb-2"><strong>Status:</strong> ${UIUtils.formatStatus(lead.status)}</div>
@@ -510,6 +514,36 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label class="form-label font-weight-medium">Company Name *</label>
                             <input type="text" class="form-control" name="company_name" value="${lead.company_name}" required>
                         </div>
+                        <!-- Company Information section -->
+                        <div class="card bg-light border p-3 mb-3">
+                            <h6 class="font-weight-semibold mb-2" style="font-size: 0.85rem;">Company Information</h6>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Website</label>
+                                <input type="url" class="form-control form-control-sm" name="website" placeholder="https://example.com" value="${lead.website || ''}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small mb-1">Industry</label>
+                                <select class="form-select form-select-sm" name="industry">
+                                    <option value="TECHNOLOGY" ${lead.industry === 'TECHNOLOGY' ? 'selected' : ''}>Technology</option>
+                                    <option value="FINANCE" ${lead.industry === 'FINANCE' ? 'selected' : ''}>Finance</option>
+                                    <option value="HEALTHCARE" ${lead.industry === 'HEALTHCARE' ? 'selected' : ''}>Healthcare</option>
+                                    <option value="EDUCATION" ${lead.industry === 'EDUCATION' ? 'selected' : ''}>Education</option>
+                                    <option value="RETAIL" ${lead.industry === 'RETAIL' ? 'selected' : ''}>Retail</option>
+                                    <option value="MANUFACTURING" ${lead.industry === 'MANUFACTURING' ? 'selected' : ''}>Manufacturing</option>
+                                    <option value="OTHER" ${lead.industry === 'OTHER' || !lead.industry ? 'selected' : ''}>Other</option>
+                                </select>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col">
+                                    <label class="form-label small mb-1">Employees</label>
+                                    <input type="number" class="form-control form-control-sm" name="employee_count" min="0" value="${lead.employee_count !== null && lead.employee_count !== undefined ? lead.employee_count : ''}">
+                                </div>
+                                <div class="col">
+                                    <label class="form-label small mb-1">Annual Revenue</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" name="annual_revenue" min="0" value="${lead.annual_revenue !== null && lead.annual_revenue !== undefined ? lead.annual_revenue : ''}">
+                                </div>
+                            </div>
+                        </div>
                         <div class="row mb-3">
                             <div class="col">
                                 <label class="form-label font-weight-medium">Lead Source</label>
@@ -571,6 +605,16 @@ document.addEventListener('DOMContentLoaded', () => {
         body.contact_attempts = parseInt(body.contact_attempts) || 0;
         if (!body.last_contact_date) {
             body.last_contact_date = null;
+        }
+        if (body.employee_count) {
+            body.employee_count = parseInt(body.employee_count, 10);
+        } else {
+            body.employee_count = null;
+        }
+        if (body.annual_revenue) {
+            body.annual_revenue = parseFloat(body.annual_revenue);
+        } else {
+            body.annual_revenue = null;
         }
 
         try {

@@ -12,8 +12,5 @@ class CompanyQueryService:
             queryset = Company.objects.all()
             
         queryset = queryset.select_related('assigned_salesperson')
-        
-        if user.is_superuser or getattr(user, 'is_staff', False):
-            return queryset
-            
-        return queryset.filter(assigned_salesperson=user)
+        from roles.permissions import get_scoped_queryset
+        return get_scoped_queryset(queryset, user, resource_codename='companies', owner_field='assigned_salesperson')

@@ -163,12 +163,10 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"lost_reason": "A lost reason is required when closing an opportunity as Lost."})
 
         # Ensure pipeline_stage belongs to pipeline
-        is_pipeline_changing = 'pipeline' in attrs and attrs['pipeline'] != self.instance.pipeline
-        if not is_pipeline_changing or 'pipeline_stage' in attrs:
-            pipeline = attrs.get('pipeline', self.instance.pipeline if self.instance else None)
-            resolved_stage = attrs.get('pipeline_stage', self.instance.pipeline_stage if self.instance else None)
-            if pipeline and resolved_stage and resolved_stage.pipeline != pipeline:
-                raise serializers.ValidationError({"pipeline_stage": "The selected stage does not belong to the selected pipeline."})
+        pipeline = attrs.get('pipeline', self.instance.pipeline if self.instance else None)
+        resolved_stage = attrs.get('pipeline_stage', self.instance.pipeline_stage if self.instance else None)
+        if pipeline and resolved_stage and resolved_stage.pipeline != pipeline:
+            raise serializers.ValidationError({"pipeline_stage": "The selected stage does not belong to the selected pipeline."})
 
         return attrs
 

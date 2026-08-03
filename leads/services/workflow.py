@@ -131,6 +131,18 @@ class LeadWorkflowService:
             if not company.description and lead.notes:
                 company.description = lead.notes
                 company_updated = True
+            if not company.website and lead.website:
+                company.website = lead.website
+                company_updated = True
+            if (not company.industry or company.industry == 'OTHER') and lead.industry and lead.industry != 'OTHER':
+                company.industry = lead.industry
+                company_updated = True
+            if company.employee_count is None and lead.employee_count is not None:
+                company.employee_count = lead.employee_count
+                company_updated = True
+            if company.annual_revenue is None and lead.annual_revenue is not None:
+                company.annual_revenue = lead.annual_revenue
+                company_updated = True
             if not company.assigned_salesperson and lead.assigned_salesperson:
                 company.assigned_salesperson = lead.assigned_salesperson
                 company_updated = True
@@ -144,6 +156,10 @@ class LeadWorkflowService:
                 email=lead.email,
                 lead_source=lead.source or '',
                 description=lead.notes or '',
+                website=lead.website or '',
+                industry=lead.industry or 'OTHER',
+                employee_count=lead.employee_count,
+                annual_revenue=lead.annual_revenue,
                 assigned_salesperson=lead.assigned_salesperson
             )
 

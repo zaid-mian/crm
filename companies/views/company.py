@@ -4,11 +4,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
+from roles.permissions import DynamicCRMPermission, get_scoped_queryset
 
 from companies.models import Company
 from companies.services.query import CompanyQueryService
 from companies.filters import CompanyFilter, CompanySearchFilter
-from companies.permissions import IsCompanyOwnerOrManager
 from companies.utils.responses import api_success
 from companies.serializers import (
     CompanyListSerializer,
@@ -47,7 +47,9 @@ class CompanyViewSet(viewsets.ModelViewSet):
     CompanyViewSet coordinating CRUD, query scoping, and delete protection.
     """
     queryset = Company.objects.all()
-    permission_classes = [IsAuthenticated, IsCompanyOwnerOrManager]
+    permission_classes = [IsAuthenticated, DynamicCRMPermission]
+    resource_codename = 'companies'
+    owner_field = 'assigned_salesperson'
     pagination_class = CompanyPagination
     filter_backends = [DjangoFilterBackend, CompanySearchFilter, filters.OrderingFilter]
     filterset_class = CompanyFilter
@@ -72,6 +74,24 @@ class CompanyViewSet(viewsets.ModelViewSet):
             return qs.prefetch_related('contacts', 'opportunities')
         return qs
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'companies', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=user)
+        else:
+            return serializer.save()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        from roles.services import PermissionService
+        scope = PermissionService.get_permission_scope(user, 'companies', 'ASSIGN')
+        if scope == 'NONE':
+            return serializer.save(assigned_salesperson=serializer.instance.assigned_salesperson)
+        else:
+            return serializer.save()
+
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, CompanyListSerializer)
 
@@ -86,7 +106,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        company = serializer.save()
+        company = self.perform_create(serializer)
 
         out_serializer = CompanyDetailSerializer(company)
         return api_success(
@@ -100,7 +120,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        company = serializer.save()
+        company = self.perform_update(serializer)
 
         out_serializer = CompanyDetailSerializer(company)
         return api_success(

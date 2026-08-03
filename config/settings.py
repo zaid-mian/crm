@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'payments',
     'dashboard',
     'corsheaders',
+    'roles',
 ]
 
 MIDDLEWARE = [
