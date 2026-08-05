@@ -264,3 +264,111 @@ class CatalogAPITestCase(TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['data']['name'], "Implementation Setup")
 
+
+from django.contrib.auth import get_user_model
+from catalog.models import Feedback
+
+User = get_user_model()
+
+class CustomerFeedbackTest(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user(username="cust@test.com", email="cust@test.com", password="password")
+        self.product = Product.objects.create(name="Feedback Product", slug="feedback-product")
+        self.service = Service.objects.create(name="Feedback Service", slug="feedback-service")
+
+    def test_feedback_rating_boundaries(self):
+        # Good rating
+        f = Feedback(user=self.customer, product=self.product, rating=5, comment="Great")
+        f.full_clean()  # Should pass
+        
+        # Rating too low
+        f_low = Feedback(user=self.customer, product=self.product, rating=0, comment="Bad")
+        with self.assertRaises(ValidationError):
+            f_low.full_clean()
+
+        # Rating too high
+        f_high = Feedback(user=self.customer, product=self.product, rating=6, comment="Superb")
+        with self.assertRaises(ValidationError):
+            f_high.full_clean()
+
+    def test_feedback_exclusivity(self):
+        # Target both (should fail)
+        f_both = Feedback(user=self.customer, product=self.product, service=self.service, rating=4, comment="Both")
+        with self.assertRaises(ValidationError):
+            f_both.full_clean()
+
+        # Target neither (should fail)
+        f_none = Feedback(user=self.customer, rating=4, comment="None")
+        with self.assertRaises(ValidationError):
+            f_none.full_clean()
+
+    def test_feedback_uniqueness_constraints(self):
+        Feedback.objects.create(user=self.customer, product=self.product, rating=4, comment="First")
+        
+        # Duplicate review for same product/user should fail unique constraint
+        f_dup = Feedback(user=self.customer, product=self.product, rating=5, comment="Second")
+        with self.assertRaises(ValidationError):
+            f_dup.full_clean()
+
+
+class CatalogFeedbackAPITest(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create_user(username="cust@test.com", email="cust@test.com", password="password")
+        self.other_customer = User.objects.create_user(username="other@test.com", email="other@test.com", password="password")
+        self.admin = User.objects.create_superuser(username="admin@test.com", email="admin@test.com", password="password")
+        
+        self.product = Product.objects.create(name="Feedback Product", slug="feedback-product", is_active=True)
+        self.service = Service.objects.create(name="Feedback Service", slug="feedback-service", is_active=True)
+
+    def test_feedback_api_upsert_flow(self):
+        self.client.login(username="cust@test.com", password="password")
+        url = reverse('catalog:api_product_feedback', kwargs={'slug': self.product.slug})
+        
+        # 1. Post a new review
+        response = self.client.post(url, {"rating": 4, "comment": "Nice"}, content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Feedback.objects.count(), 1)
+        self.assertEqual(Feedback.objects.first().rating, 4)
+
+        # 2. Post again as same user (should edit/update)
+        response_edit = self.client.post(url, {"rating": 5, "comment": "Excellent"}, content_type='application/json')
+        self.assertEqual(response_edit.status_code, 200)
+        self.assertEqual(Feedback.objects.count(), 1)
+        self.assertEqual(Feedback.objects.first().rating, 5)
+        self.assertEqual(Feedback.objects.first().comment, "Excellent")
+
+    def test_product_service_detail_api_feedback_keys(self):
+        # Create reviews
+        Feedback.objects.create(user=self.customer, product=self.product, rating=5, comment="Amazing")
+        Feedback.objects.create(user=self.other_customer, product=self.product, rating=3, comment="Okay")
+
+        url = reverse('catalog:api_product_detail', kwargs={'slug': self.product.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        data = response.json()['data']
+        self.assertEqual(data['review_count'], 2)
+        self.assertEqual(data['average_rating'], 4.0)
+        self.assertEqual(len(data['reviews']), 2)
+        self.assertEqual(data['reviews'][0]['rating'], 3) # descending order
+
+    def test_global_feedback_access(self):
+        # 1. Unauthenticated/Non-staff accesses global reviews queue (should fail)
+        url = reverse('catalog:api_global_feedback')
+        response_unauth = self.client.get(url)
+        self.assertEqual(response_unauth.status_code, 403)
+
+        self.client.login(username="cust@test.com", password="password")
+        response_cust = self.client.get(url)
+        self.assertEqual(response_cust.status_code, 403)
+        self.client.logout()
+
+        # 2. Staff user gets reviews list (should succeed)
+        Feedback.objects.create(user=self.customer, product=self.product, rating=5, comment="Amazing")
+        self.client.login(username="admin@test.com", password="password")
+        response_admin = self.client.get(url)
+        self.assertEqual(response_admin.status_code, 200)
+        self.assertEqual(len(response_admin.json()['data']), 1)
+        self.assertEqual(response_admin.json()['data'][0]['target_name'], "Feedback Product")
+
+

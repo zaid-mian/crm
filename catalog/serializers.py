@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Product, Module, Service, ServiceFeature, PricingPlan, PlanModule, Discount
+from django.db.models import Avg
+from .models import Product, Module, Service, ServiceFeature, PricingPlan, PlanModule, Discount, Feedback
+from catalog.utils import can_user_review
 
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,16 +45,58 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'description', 'image', 'is_active', 'display_order']
 
 
+class FeedbackSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Feedback
+        fields = ['id', 'user_id', 'user_name', 'rating', 'comment', 'updated_at']
+        read_only_fields = ['id', 'updated_at']
+
+    def get_user_name(self, obj):
+        full_name = obj.user.get_full_name()
+        return full_name if full_name else obj.user.email.split('@')[0]
+
+
 class ProductDetailSerializer(serializers.ModelSerializer):
     modules = ModuleSerializer(many=True, read_only=True)
     pricing_plans = PricingPlanSerializer(source='plans', many=True, read_only=True)
+    can_review = serializers.SerializerMethodField()
+    has_reviewed = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'slug', 'description', 'image', 
-            'is_active', 'display_order', 'modules', 'pricing_plans'
+            'is_active', 'display_order', 'modules', 'pricing_plans',
+            'can_review', 'has_reviewed', 'average_rating', 'review_count', 'reviews'
         ]
+
+    def get_can_review(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        return can_user_review(user, obj)
+
+    def get_has_reviewed(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        if user and user.is_authenticated:
+            return obj.feedbacks.filter(user=user).exists()
+        return False
+
+    def get_average_rating(self, obj):
+        avg_rating = obj.feedbacks.aggregate(Avg('rating'))['rating__avg']
+        return float(avg_rating) if avg_rating is not None else 0.0
+
+    def get_review_count(self, obj):
+        return obj.feedbacks.count()
+
+    def get_reviews(self, obj):
+        return FeedbackSerializer(obj.feedbacks.all(), many=True).data
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -64,10 +108,38 @@ class ServiceSerializer(serializers.ModelSerializer):
 class ServiceDetailSerializer(serializers.ModelSerializer):
     features = ServiceFeatureSerializer(many=True, read_only=True)
     pricing_plans = PricingPlanSerializer(source='plans', many=True, read_only=True)
+    can_review = serializers.SerializerMethodField()
+    has_reviewed = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = Service
         fields = [
             'id', 'name', 'slug', 'short_description', 'full_description', 
-            'image', 'is_active', 'display_order', 'features', 'pricing_plans'
+            'image', 'is_active', 'display_order', 'features', 'pricing_plans',
+            'can_review', 'has_reviewed', 'average_rating', 'review_count', 'reviews'
         ]
+
+    def get_can_review(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        return can_user_review(user, obj)
+
+    def get_has_reviewed(self, obj):
+        request = self.context.get('request')
+        user = request.user if request else None
+        if user and user.is_authenticated:
+            return obj.feedbacks.filter(user=user).exists()
+        return False
+
+    def get_average_rating(self, obj):
+        avg_rating = obj.feedbacks.aggregate(Avg('rating'))['rating__avg']
+        return float(avg_rating) if avg_rating is not None else 0.0
+
+    def get_review_count(self, obj):
+        return obj.feedbacks.count()
+
+    def get_reviews(self, obj):
+        return FeedbackSerializer(obj.feedbacks.all(), many=True).data
