@@ -197,3 +197,70 @@ class CatalogModelIntegrityTest(TestCase):
         # Should clean successfully
         valid_discount.full_clean()
         valid_discount.save()
+
+
+from django.urls import reverse
+
+class CatalogAPITestCase(TestCase):
+    def setUp(self):
+        self.product = Product.objects.create(
+            name="Sales CRM",
+            slug="sales-crm",
+            description="Active CRM SaaS module",
+            is_active=True
+        )
+        self.module = Module.objects.create(
+            product=self.product,
+            name="Lead Tracking",
+            code="lead_tracking"
+        )
+        self.plan = PricingPlan.objects.create(
+            product=self.product,
+            name="Pro",
+            price=29.99,
+            billing_cycle="monthly",
+            is_active=True
+        )
+        self.service = Service.objects.create(
+            name="Implementation Setup",
+            slug="implementation-setup",
+            short_description="Full onboarding consulting",
+            is_active=True
+        )
+
+    def test_product_list_api(self):
+        url = reverse('catalog:api_product_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['data']), 1)
+        self.assertEqual(data['data'][0]['name'], "Sales CRM")
+
+    def test_product_detail_api(self):
+        url = reverse('catalog:api_product_detail', kwargs={'slug': 'sales-crm'})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['name'], "Sales CRM")
+        self.assertEqual(len(data['data']['modules']), 1)
+        self.assertEqual(len(data['data']['pricing_plans']), 1)
+
+    def test_service_list_api(self):
+        url = reverse('catalog:api_service_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['data']), 1)
+        self.assertEqual(data['data'][0]['name'], "Implementation Setup")
+
+    def test_service_detail_api(self):
+        url = reverse('catalog:api_service_detail', kwargs={'slug': 'implementation-setup'})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['name'], "Implementation Setup")
+

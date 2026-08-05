@@ -14,4 +14,6 @@ urlpatterns = [
     # ADD THESE
     path('api/', include('roles.urls')),
     path('api/', include('dashboard.urls')),
+    path('api/', include('catalog.urls')),
+    path('api/', include('accounts.urls')),
 ]

@@ -1,0 +1,73 @@
+from rest_framework import serializers
+from .models import Product, Module, Service, ServiceFeature, PricingPlan, PlanModule, Discount
+
+class ModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Module
+        fields = ['id', 'name', 'code', 'description', 'is_active', 'display_order']
+
+
+class ServiceFeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceFeature
+        fields = ['id', 'name', 'display_order']
+
+
+class DiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Discount
+        fields = ['id', 'name', 'discount_type', 'value', 'is_active', 'start_date', 'end_date']
+
+
+class PricingPlanSerializer(serializers.ModelSerializer):
+    final_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    active_discount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PricingPlan
+        fields = [
+            'id', 'name', 'price', 'final_price', 'currency', 
+            'billing_cycle', 'is_active', 'display_order', 'active_discount'
+        ]
+
+    def get_active_discount(self, obj):
+        discount = obj.get_active_discount()
+        if discount:
+            return DiscountSerializer(discount).data
+        return None
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'slug', 'description', 'image', 'is_active', 'display_order']
+
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    modules = ModuleSerializer(many=True, read_only=True)
+    pricing_plans = PricingPlanSerializer(source='plans', many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'name', 'slug', 'description', 'image', 
+            'is_active', 'display_order', 'modules', 'pricing_plans'
+        ]
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'slug', 'short_description', 'full_description', 'image', 'is_active', 'display_order']
+
+
+class ServiceDetailSerializer(serializers.ModelSerializer):
+    features = ServiceFeatureSerializer(many=True, read_only=True)
+    pricing_plans = PricingPlanSerializer(source='plans', many=True, read_only=True)
+
+    class Meta:
+        model = Service
+        fields = [
+            'id', 'name', 'slug', 'short_description', 'full_description', 
+            'image', 'is_active', 'display_order', 'features', 'pricing_plans'
+        ]
