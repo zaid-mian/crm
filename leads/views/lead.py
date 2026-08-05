@@ -9,7 +9,7 @@ from leads.models import Lead
 from leads.services import LeadQueryService, LeadStatsService, LeadWorkflowService
 from leads.filters import LeadFilter, LeadSearchFilter
 from leads.permissions import IsAdminOrSalesManager, IsLeadOwnerOrManager, is_manager_or_admin
-from leads.utils.responses import api_success, api_error
+from core.api.responses import api_success, api_error
 from leads.serializers import (
     LeadListSerializer,
     LeadDetailSerializer,

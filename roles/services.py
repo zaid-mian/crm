@@ -21,6 +21,11 @@ class RoleService:
         role, _ = Role.objects.get_or_create(name=role_name, defaults=defaults)
         return role
 
+    @classmethod
+    def get_default_admin_role(cls):
+        return cls.get_default_role("Administrator")
+
+
 class PermissionService:
     @staticmethod
     def get_permission_cache_key(user_id):

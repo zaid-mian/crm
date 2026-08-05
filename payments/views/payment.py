@@ -16,7 +16,7 @@ from payments.serializers.payment import (
 )
 from payments.services.documents import render_invoice_pdf, render_receipt_pdf
 from payments.services.query import PaymentQueryService
-from leads.utils.responses import api_success
+from core.api.responses import api_success
 
 
 class PaymentPagination(PageNumberPagination):

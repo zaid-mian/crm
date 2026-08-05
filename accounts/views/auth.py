@@ -16,7 +16,7 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
-from leads.utils.responses import api_success, api_error
+from core.api.responses import api_success, api_error
 from django.contrib.auth import get_user_model
 from ..models import OwnerProfile, RegistrationRequest
 from ..serializers import PlatformSignupSerializer
@@ -55,21 +55,10 @@ class LoginView(APIView):
         if user is not None:
             login(request, user)
 
-            # Get user type from CRM profile if CRM app is installed
-            user_type = 'USER'
-            if apps.is_installed('leads'):
-                UserProfile = apps.get_model('leads', 'UserProfile')
-                profile, _ = UserProfile.objects.get_or_create(
-                    user=user,
-                    defaults={'user_type': 'ADMIN' if user.is_superuser or user.is_staff else 'USER'}
-                )
-                user_type = profile.user_type
-
             return api_success(data={
                 "id": user.id,
                 "username": user.username,
-                "email": user.email,
-                "user_type": user_type
+                "email": user.email
             }, message="Login successful")
 
         # Check if the user is inactive and explain why (pending or rejected requests)
@@ -112,15 +101,7 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
 
-        # Get user type from CRM profile if CRM app is installed
-        user_type = 'USER'
-        if apps.is_installed('leads'):
-            UserProfile = apps.get_model('leads', 'UserProfile')
-            profile, _ = UserProfile.objects.get_or_create(
-                user=user,
-                defaults={'user_type': 'ADMIN' if user.is_superuser or user.is_staff else 'USER'}
-            )
-            user_type = profile.user_type
+        # No CRM-specific logic in platform views
 
         profile_data = None
         try:
@@ -149,7 +130,6 @@ class MeView(APIView):
             "last_name": user.last_name,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
-            "user_type": user_type,
             "profile": profile_data
         }, message="User details retrieved successfully")
 

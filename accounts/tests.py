@@ -235,7 +235,8 @@ class AccountsAPITestCase(TestCase):
 
         # 4. Approve request
         approve_url = reverse('accounts:api_admin_approve', kwargs={'pk': reg_request.pk})
-        approve_response = self.client.post(approve_url)
+        with self.captureOnCommitCallbacks(execute=True):
+            approve_response = self.client.post(approve_url)
         self.assertEqual(approve_response.status_code, 200)
 
         # 5. Verify activation

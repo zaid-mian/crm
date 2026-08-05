@@ -4,11 +4,12 @@ from rest_framework import status
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.db.models import Q
-from leads.utils.responses import api_success, api_error
+from django.db import transaction
+from core.api.responses import api_success, api_error
 from django.contrib.auth import get_user_model
 from ..models import RegistrationRequest, Organization
 from ..serializers import RegistrationRequestSerializer, OrganizationSerializer
-from ..signals import organization_activated
+from ..signals import registration_approved
 
 User = get_user_model()
 
@@ -55,8 +56,8 @@ class AdminRegistrationApproveView(APIView):
         org.is_active = True
         org.save()
 
-        # 3. Fire custom decoupled signal to provision workspace metrics/RBAC
-        organization_activated.send(sender=RegistrationRequest, user=user, organization=org)
+        # 3. Fire custom decoupled signal to provision workspace metrics/RBAC only after commit
+        transaction.on_commit(lambda: registration_approved.send(sender=RegistrationRequest, user=user, organization=org))
 
         return api_success(message="Registration request approved successfully.")
 

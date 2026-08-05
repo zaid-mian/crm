@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, BasePermission
-from leads.utils.responses import api_success, api_error
+from core.api.responses import api_success, api_error
 from pipeline.services.query import PipelineQueryService
 from pipeline.serializers import PipelineCardSerializer
 

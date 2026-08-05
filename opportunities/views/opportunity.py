@@ -13,7 +13,7 @@ from opportunities.serializers import (
     OpportunityDetailSerializer,
     OpportunityUpdateSerializer,
 )
-from leads.utils.responses import api_success, api_error
+from core.api.responses import api_success, api_error
 
 class OpportunityPagination(PageNumberPagination):
     page_size = 20

@@ -1,5 +1,5 @@
 from rest_framework.views import exception_handler
-from leads.utils.responses import api_error
+from core.api.responses import api_error
 
 def custom_exception_handler(exc, context):
     """

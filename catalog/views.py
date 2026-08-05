@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from leads.utils.responses import api_success, api_error
+from core.api.responses import api_success, api_error
 from .models import Product, Service
 from .serializers import (
     ProductSerializer, ProductDetailSerializer, 
