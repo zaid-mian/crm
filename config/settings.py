@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'roles',
     'catalog',
     'accounts',
+    'support',
 ]
 
 MIDDLEWARE = [
