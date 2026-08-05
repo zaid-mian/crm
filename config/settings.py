@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'dashboard',
     'corsheaders',
     'roles',
+    'catalog',
 ]
 
 MIDDLEWARE = [
