@@ -193,3 +193,132 @@ class GlobalFeedbackAPIView(APIView):
             })
 
         return api_success(data=data, message="Global reviews retrieved successfully.")
+
+
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from .models import Product, Module, PricingPlan, PlanModule, Discount
+from .serializers import (
+    ProductSerializer, ModuleSerializer, PricingPlanSerializer,
+    PlanModuleSerializer, DiscountSerializer
+)
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class IsPlatformAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+
+
+class EnvelopedModelViewSet(viewsets.ModelViewSet):
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return api_success(data=serializer.data, message="Items retrieved successfully")
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return api_success(data=serializer.data, message="Item retrieved successfully")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return api_success(data=serializer.data, message="Item created successfully", status_code=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return api_success(data=serializer.data, message="Item updated successfully")
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return api_success(message="Item deleted successfully", status_code=status.HTTP_200_OK)
+
+
+class ProductAdminViewSet(EnvelopedModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = [IsPlatformAdminOrReadOnly]
+    lookup_field = 'id'
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = True
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Product activated successfully")
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Product deactivated successfully")
+
+
+class ModuleAdminViewSet(EnvelopedModelViewSet):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsPlatformAdminOrReadOnly]
+    lookup_field = 'id'
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = True
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Module activated successfully")
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Module deactivated successfully")
+
+
+class PricingPlanAdminViewSet(EnvelopedModelViewSet):
+    queryset = PricingPlan.objects.all()
+    serializer_class = PricingPlanSerializer
+    permission_classes = [IsPlatformAdminOrReadOnly]
+    lookup_field = 'id'
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = True
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Pricing plan activated successfully")
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, id=None):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return api_success(data=self.get_serializer(instance).data, message="Pricing plan deactivated successfully")
+
+
+class PlanModuleAdminViewSet(EnvelopedModelViewSet):
+    queryset = PlanModule.objects.all()
+    serializer_class = PlanModuleSerializer
+    permission_classes = [IsPlatformAdminOrReadOnly]
+    lookup_field = 'id'
+
+
+class DiscountAdminViewSet(EnvelopedModelViewSet):
+    queryset = Discount.objects.all()
+    serializer_class = DiscountSerializer
+    permission_classes = [IsPlatformAdminOrReadOnly]
+    lookup_field = 'id'

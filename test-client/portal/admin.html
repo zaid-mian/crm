@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - OrbitCRM JTS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="portal.css">
+    <style>
+        .grid-admin {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 850px) {
+            .grid-admin {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sidebar-link {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background: var(--warning);
+            color: #000000;
+            border-color: var(--warning);
+            font-weight: 600;
+        }
+        .queue-item {
+            padding: 15px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .thread-container {
+            margin-top: 20px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 20px;
+            max-height: 350px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .thread-reply {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.4;
+            max-width: 75%;
+        }
+        .reply-staff {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            align-self: flex-end;
+        }
+        .reply-customer {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            align-self: flex-start;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Nav Bar -->
+        <nav class="navbar">
+            <a href="index.html" class="navbar-brand" style="color: var(--warning);">★ BMS Admin Control</a>
+            <ul class="navbar-nav">
+                <li><a href="index.html" class="nav-link">Catalog</a></li>
+                <li><a href="dashboard.html" class="nav-link">User Portal</a></li>
+                <li><a href="admin.html" class="nav-link active">Admin Area</a></li>
+                <li><a href="javascript:void(0)" onclick="handleLogout()" class="nav-link" style="color: var(--danger);">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="grid-admin">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <a href="javascript:void(0)" onclick="switchTab('tab-registrations')" id="link-tab-registrations" class="sidebar-link active">Pending Approvals</a>
+                <a href="javascript:void(0)" onclick="switchTab('tab-tickets')" id="link-tab-tickets" class="sidebar-link">All Tickets Queue</a>
+                <a href="javascript:void(0)" onclick="switchTab('tab-feedback')" id="link-tab-feedback" class="sidebar-link">Customer Reviews</a>
+            </div>
+
+            <!-- Main Panel -->
+            <div class="main-content">
+                <!-- Tab: Pending Registrations -->
+                <div id="tab-registrations" class="tab-pane">
+                    <div class="card">
+                        <h2>Pending Sign-Up Approvals</h2>
+                        <div id="reg-alert"></div>
+                        <div id="registrations-container"></div>
+                    </div>
+                </div>
+
+                <!-- Tab: Support Tickets Queue -->
+                <div id="tab-tickets" class="tab-pane" style="display: none;">
+                    <div id="admin-tickets-list-view">
+                        <div class="card">
+                            <h2>All Operations Support Tickets</h2>
+                            <div id="tickets-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ticket Action Panel -->
+                    <div id="admin-ticket-detail-view" class="card" style="display: none;">
+                        <button class="btn btn-secondary" onclick="hideTicketDetails()">&larr; Back to Queue</button>
+                        
+                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:15px;">
+                            <div>
+                                <h2 id="detail-tkt-subject" style="border:none; padding:0; margin-bottom:5px;">Subject</h2>
+                                <span id="detail-tkt-number" style="font-weight:600; color:var(--warning); font-size:14px;">TKT-1000</span>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <div class="form-group" style="margin:0;">
+                                    <select id="detail-tkt-status-select" class="form-control" style="padding:6px; font-size:12px;" onchange="updateTicketStatusAction()">
+                                        <option value="open">Open</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:15px; border-radius:8px; margin-top:15px; font-size:13px; line-height:1.5;">
+                            <p id="detail-tkt-message">Inquiry detail text...</p>
+                        </div>
+
+                        <!-- Assignment Card -->
+                        <div class="card" style="margin: 15px 0; padding:15px; display:flex; justify-content:space-between; flex-direction:row; align-items:center;">
+                            <span style="font-size:13px; color:var(--text-muted);">Assigned Personnel:</span>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <select id="staff-assignee-select" class="form-control" style="width:160px; padding:6px; font-size:12px;"></select>
+                                <button class="btn" style="padding:6px 12px; font-size:12px;" onclick="assignTicketAction()">Assign</button>
+                            </div>
+                        </div>
+
+                        <!-- Replies Thread -->
+                        <div class="thread-container" id="detail-tkt-thread"></div>
+
+                        <!-- Reply Form -->
+                        <div style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:20px;">
+                            <form id="admin-ticket-reply-form">
+                                <div class="form-group">
+                                    <label for="tkt-reply-msg">Post Official Response</label>
+                                    <textarea id="tkt-reply-msg" class="form-control" rows="3" placeholder="Respond as Helpdesk agent..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-success">Send Agent Reply</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Customer Feedback Queue -->
+                <div id="tab-feedback" class="tab-pane" style="display: none;">
+                    <div class="card">
+                        <h2>Catalog Reviews Ingestion Queue</h2>
+                        <div id="reviews-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = localStorage.getItem('apiBaseUrl') || 
+            (window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8000' : 'http://localhost:8000');
+        let activeTicketNumber = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+            if (!isAuthenticated) {
+                window.location.href = 'login.html';
+                return;
+            }
+            let user = {};
+            try {
+                const storedUser = localStorage.getItem('user');
+                if (storedUser && storedUser !== 'undefined') {
+                    user = JSON.parse(storedUser);
+                }
+            } catch (e) {}
+            if (!user.is_staff && !user.is_superuser) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+            fetchPendingRegistrations();
+            fetchGlobalTickets();
+            fetchGlobalReviews();
+            fetchStaffMembers();
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(`${API_BASE}/api/logout/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+            } catch(e) {}
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).style.display = 'block';
+            document.getElementById(`link-${tabId}`).classList.add('active');
+        }
+
+        async function fetchPendingRegistrations() {
+            const container = document.getElementById('registrations-container');
+            container.innerHTML = `<div class="spinner-container"><div class="spinner"></div></div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/registrations/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+                
+                container.innerHTML = '';
+                if (response.ok && res.success) {
+                    const list = res.data;
+                    if (!list || list.length === 0) {
+                        container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">No pending registration approvals.</p>`;
+                    } else {
+                        list.forEach(reg => {
+                            const p = reg.owner_profile || {};
+                            const div = document.createElement('div');
+                            div.className = 'queue-item';
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                                    <div>
+                                        <h3 style="color:#ffffff; font-size:15px; margin-bottom:5px;">${escapeHtml(reg.organization_name)}</h3>
+                                        <p style="font-size:12px; color:var(--text-muted); line-height:1.4;">
+                                            Owner: ${escapeHtml(reg.owner_name)} (${escapeHtml(reg.owner_email)})<br>
+                                            Phone: ${escapeHtml(p.phone_number)} | CNIC: ${escapeHtml(p.cnic)}<br>
+                                            Location: ${escapeHtml(p.address)}, ${escapeHtml(p.country)}
+                                        </p>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="btn btn-success" style="padding:6px 12px; font-size:12px;" onclick="approveRegistration(${reg.id})">Approve</button>
+                                        <button class="btn btn-danger" style="padding:6px 12px; font-size:12px;" onclick="rejectRegistration(${reg.id})">Reject</button>
+                                    </div>
+                                </div>
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                } else {
+                    container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading approvals queue.</p>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading approvals queue.</p>`;
+            }
+        }
+
+        async function approveRegistration(id) {
+            if (!confirm("Are you sure you want to approve this signup request?")) return;
+            const alertEl = document.getElementById('reg-alert');
+            alertEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/registrations/${id}/approve/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+                if (response.ok) {
+                    alertEl.innerHTML = `<div class="alert alert-success">Registration request approved! Onboarding provisioning triggered.</div>`;
+                    fetchPendingRegistrations();
+                } else {
+                    alertEl.innerHTML = `<div class="alert alert-danger">${res.error || 'Approval failed.'}</div>`;
+                }
+            } catch(e) {
+                alertEl.innerHTML = `<div class="alert alert-danger">Network Error during approval request.</div>`;
+            }
+        }
+
+        async function rejectRegistration(id) {
+            const reason = prompt("State reason for sign-up rejection:");
+            if (reason === null) return; // cancelled
+            if (reason.trim() === '') {
+                alert("A rejection reason is required.");
+                return;
+            }
+
+            const alertEl = document.getElementById('reg-alert');
+            alertEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/registrations/${id}/reject/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ reason: reason })
+                });
+                const res = await response.json();
+                if (response.ok) {
+                    alertEl.innerHTML = `<div class="alert alert-success">Registration request rejected. Notice sent to applicant.</div>`;
+                    fetchPendingRegistrations();
+                } else {
+                    alertEl.innerHTML = `<div class="alert alert-danger">${res.error || 'Rejection failed.'}</div>`;
+                }
+            } catch(e) {
+                alertEl.innerHTML = `<div class="alert alert-danger">Network Error during rejection request.</div>`;
+            }
+        }
+
+        // Fetch Global Tickets
+        async function fetchGlobalTickets() {
+            const container = document.getElementById('tickets-container');
+            container.innerHTML = `<div class="spinner-container"><div class="spinner"></div></div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+                
+                container.innerHTML = '';
+                if (response.ok && res.success) {
+                    if (res.data.length === 0) {
+                        container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">No support tickets logged.</p>`;
+                    } else {
+                        res.data.forEach(tkt => {
+                            const badgeClass = tkt.status === 'closed' ? 'badge-danger' : (tkt.status === 'resolved' ? 'badge-success' : 'badge-warning');
+                            const div = document.createElement('div');
+                            div.className = 'ticket-item';
+                            div.onclick = () => viewTicketDetails(tkt.ticket_number);
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:#ffffff; font-size:14px;">${escapeHtml(tkt.subject)}</strong>
+                                    <span class="badge ${badgeClass}">${escapeHtml(tkt.status)}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--text-muted);">
+                                    <span>${escapeHtml(tkt.ticket_number)} | Organization: ${escapeHtml(tkt.organization_name || 'N/A')}</span>
+                                    <span>Assignee: ${escapeHtml(tkt.assigned_to_name || 'Unassigned')}</span>
+                                </div>
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading global ticket queue.</p>`;
+            }
+        }
+
+        async function viewTicketDetails(tktNum) {
+            activeTicketNumber = tktNum;
+            document.getElementById('admin-tickets-list-view').style.display = 'none';
+            document.getElementById('admin-ticket-detail-view').style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${tktNum}/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+
+                if (response.ok && res.success) {
+                    const t = res.data;
+                    document.getElementById('detail-tkt-subject').innerText = t.subject;
+                    document.getElementById('detail-tkt-number').innerText = t.ticket_number;
+                    document.getElementById('detail-tkt-message').innerText = t.message;
+                    document.getElementById('detail-tkt-status-select').value = t.status;
+
+                    if (t.assigned_to) {
+                        document.getElementById('staff-assignee-select').value = t.assigned_to;
+                    } else {
+                        document.getElementById('staff-assignee-select').value = '';
+                    }
+
+                    // Populate Replies Thread
+                    const threadContainer = document.getElementById('detail-tkt-thread');
+                    threadContainer.innerHTML = '';
+                    if (t.replies && t.replies.length > 0) {
+                        t.replies.forEach(rep => {
+                            const rDiv = document.createElement('div');
+                            const isStaff = rep.replied_by_staff;
+                            rDiv.className = `thread-reply ${isStaff ? 'reply-staff' : 'reply-customer'}`;
+                            rDiv.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600; font-size:11px;">
+                                    <span>${escapeHtml(rep.author_name)} ${isStaff ? '(Support Staff)' : '(Client)'}</span>
+                                </div>
+                                <p>${escapeHtml(rep.message)}</p>
+                                <span style="font-size:9px; color:var(--text-muted); display:block; text-align:right; margin-top:4px;">${new Date(rep.created_at).toLocaleTimeString()}</span>
+                            `;
+                            threadContainer.appendChild(rDiv);
+                        });
+                        threadContainer.scrollTop = threadContainer.scrollHeight;
+                    } else {
+                        threadContainer.innerHTML = `<p style="color:var(--text-muted); font-size:12px; text-align:center; padding:10px;">No messages in thread.</p>`;
+                    }
+                }
+            } catch (err) {}
+        }
+
+        // Update ticket status action
+        async function updateTicketStatusAction() {
+            const newStatus = document.getElementById('detail-tkt-status-select').value;
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${activeTicketNumber}/status/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const res = await response.json();
+                if (!response.ok || !res.success) {
+                    alert(res.message || 'Status transition rejected.');
+                }
+            } catch (err) {
+                alert('Network Error during status update.');
+            }
+        }
+
+        // Fetch staff members for assignment select
+        async function fetchStaffMembers() {
+            const select = document.getElementById('staff-assignee-select');
+            select.innerHTML = '<option value="">-- Choose Staff --</option>';
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    data.forEach(user => {
+                        const opt = document.createElement('option');
+                        opt.value = user.id;
+                        opt.innerText = user.first_name || user.username;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {}
+        }
+
+        // Assign ticket action
+        async function assignTicketAction() {
+            const assigneeId = document.getElementById('staff-assignee-select').value;
+            if (!assigneeId) {
+                alert("Please select a personnel member.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${activeTicketNumber}/assign/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ assigned_to: assigneeId })
+                });
+                const res = await response.json();
+                if (response.ok && res.success) {
+                    alert("Ticket assignment recorded successfully.");
+                    viewTicketDetails(activeTicketNumber);
+                } else {
+                    alert(res.message || "Failed to record assignment.");
+                }
+            } catch (err) {
+                alert("Network Error recording assignment.");
+            }
+        }
+
+        // Post Agent Reply
+        document.getElementById('admin-ticket-reply-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const replyMsg = document.getElementById('tkt-reply-msg').value.trim();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${activeTicketNumber}/reply/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ message: replyMsg })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    document.getElementById('tkt-reply-msg').value = '';
+                    viewTicketDetails(activeTicketNumber);
+                } else {
+                    alert(data.message || 'Failed to submit response.');
+                }
+            } catch (err) {
+                alert('Network Error posting reply.');
+            }
+        });
+
+        function hideTicketDetails() {
+            document.getElementById('admin-ticket-detail-view').style.display = 'none';
+            document.getElementById('admin-tickets-list-view').style.display = 'block';
+            fetchGlobalTickets();
+        }
+
+        // Fetch Global reviews
+        async function fetchGlobalReviews() {
+            const container = document.getElementById('reviews-container');
+            container.innerHTML = `<div class="spinner-container"><div class="spinner"></div></div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/feedback/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+                
+                container.innerHTML = '';
+                if (response.ok && res.success) {
+                    if (res.data.length === 0) {
+                        container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">No catalog customer feedback reviews logged.</p>`;
+                    } else {
+                        res.data.forEach(rev => {
+                            const div = document.createElement('div');
+                            div.className = 'queue-item';
+                            let stars = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <strong style="color:#ffffff; font-size:14px;">${escapeHtml(rev.user_name)} on ${escapeHtml(rev.target_name)} (${escapeHtml(rev.target_type)})</strong>
+                                    <span style="color:var(--warning); font-size:12px;">${stars}</span>
+                                </div>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">${escapeHtml(rev.comment)}</p>
+                                <span style="font-size:10px; color:var(--text-muted); display:block; text-align:right; margin-top:5px;">Updated: ${new Date(rev.updated_at).toLocaleString()}</span>
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading feedback logs queue.</p>`;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

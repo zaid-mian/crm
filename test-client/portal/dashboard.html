@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - OrbitCRM JTS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="portal.css">
+    <style>
+        .grid-dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 850px) {
+            .grid-dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sidebar-link {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        .ticket-item {
+            padding: 15px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .ticket-item:hover {
+            transform: translateX(4px);
+            border-color: var(--primary);
+        }
+        .thread-container {
+            margin-top: 20px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .thread-reply {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.4;
+            max-width: 75%;
+        }
+        .reply-staff {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            align-self: flex-start;
+        }
+        .reply-customer {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            align-self: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Nav Bar -->
+        <nav class="navbar">
+            <a href="index.html" class="navbar-brand">★ BMS User Portal</a>
+            <ul class="navbar-nav">
+                <li><a href="index.html" class="nav-link">Catalog</a></li>
+                <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+                <li id="admin-nav-item" style="display: none;"><a href="admin.html" class="nav-link" style="color: var(--warning); font-weight:600;">Admin Area</a></li>
+                <li><a href="javascript:void(0)" onclick="handleLogout()" class="nav-link" style="color: var(--danger);">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="grid-dashboard">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar">
+                <a href="javascript:void(0)" onclick="switchTab('tab-welcome')" id="link-tab-welcome" class="sidebar-link active">Welcome Hub</a>
+                <a href="javascript:void(0)" onclick="switchTab('tab-profile')" id="link-tab-profile" class="sidebar-link">My Profile Details</a>
+                <a href="javascript:void(0)" onclick="switchTab('tab-tickets')" id="link-tab-tickets" class="sidebar-link">Support & Ticketing</a>
+                <a href="javascript:void(0)" onclick="switchTab('tab-security')" id="link-tab-security" class="sidebar-link">Security Settings</a>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="main-content">
+                <!-- Tab: Welcome Hub -->
+                <div id="tab-welcome" class="tab-pane">
+                    <div class="card">
+                        <h1 style="color: #ffffff; font-size: 26px; margin-bottom: 8px;">Welcome, <span id="welcome-user-name">User</span>!</h1>
+                        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Manage your business profiles, service operations, and helpdesk operations from a unified space.</p>
+                        
+                        <div class="grid">
+                            <div class="card" style="margin-bottom: 0; background: rgba(99, 102, 241, 0.05);">
+                                <h3 style="color:#ffffff; font-size:16px; margin-bottom:5px;">Profile Status</h3>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">Verify your active organization bounds and address records.</p>
+                                <button class="btn btn-secondary w-100 mt-4" onclick="switchTab('tab-profile')">View Profile</button>
+                            </div>
+                            <div class="card" style="margin-bottom: 0; background: rgba(16, 185, 129, 0.05);">
+                                <h3 style="color:#ffffff; font-size:16px; margin-bottom:5px;">Helpdesk Support</h3>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">Submit or track active technical support tickets.</p>
+                                <button class="btn btn-secondary w-100 mt-4" onclick="switchTab('tab-tickets')">Launch Support</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h2 style="color: #ffffff; font-size: 18px; margin-bottom: 15px;">Active Subscriptions & Licenses</h2>
+                        <div id="active-licenses-container" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                            <div class="spinner-container"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Profile Details -->
+                <div id="tab-profile" class="tab-pane" style="display: none;">
+                    <div class="card">
+                        <h2>My Profile details</h2>
+                        <div id="profile-alert"></div>
+
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="prof-email">Email Address (Read-only)</label>
+                                <input type="email" id="prof-email" class="form-control" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="prof-cnic">CNIC Number (Read-only)</label>
+                                <input type="text" id="prof-cnic" class="form-control" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="prof-org">Organization / Tenant Tenant (Read-only)</label>
+                                <input type="text" id="prof-org" class="form-control" readonly>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="prof-first">First Name</label>
+                                    <input type="text" id="prof-first" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="prof-last">Last Name</label>
+                                    <input type="text" id="prof-last" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="prof-phone">Phone Number</label>
+                                <input type="text" id="prof-phone" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="prof-country">Country</label>
+                                <input type="text" id="prof-country" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="prof-address">Address</label>
+                                <input type="text" id="prof-address" class="form-control" required>
+                            </div>
+
+                            <button type="submit" id="btn-save-profile" class="btn">Update Profile</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab: Support Ticketing -->
+                <div id="tab-tickets" class="tab-pane" style="display: none;">
+                    <!-- Tickets List view -->
+                    <div id="tickets-list-view">
+                        <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-direction:row; margin-bottom:20px;">
+                            <h2 style="border:none; padding:0; margin:0;">Support Tickets</h2>
+                            <button class="btn" onclick="showNewTicketForm()">Open New Ticket</button>
+                        </div>
+                        <div id="tickets-container"></div>
+                    </div>
+
+                    <!-- New Ticket view -->
+                    <div id="new-ticket-view" class="card" style="display: none;">
+                        <h2>Open a Support Ticket</h2>
+                        <div id="new-ticket-alert"></div>
+                        <form id="new-ticket-form">
+                            <div class="form-group">
+                                <label for="tkt-subject">Subject *</label>
+                                <input type="text" id="tkt-subject" class="form-control" placeholder="e.g. Server response failure" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="tkt-category">Category *</label>
+                                    <select id="tkt-category" class="form-control" required>
+                                        <option value="technical" selected>Technical</option>
+                                        <option value="billing">Billing</option>
+                                        <option value="account">Account Isolation</option>
+                                        <option value="other">Other Inquiry</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tkt-priority">Priority *</label>
+                                    <select id="tkt-priority" class="form-control" required>
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="tkt-message">Detailed Message *</label>
+                                <textarea id="tkt-message" class="form-control" rows="4" placeholder="Describe your issue..." required></textarea>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button type="submit" id="btn-create-ticket" class="btn">Submit Ticket</button>
+                                <button type="button" class="btn btn-secondary" onclick="hideNewTicketForm()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Ticket Detail view -->
+                    <div id="ticket-detail-view" class="card" style="display: none;">
+                        <button class="btn btn-secondary" onclick="hideTicketDetails()">&larr; Back to Tickets</button>
+                        
+                        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:15px;">
+                            <div>
+                                <h2 id="detail-tkt-subject" style="border:none; padding:0; margin-bottom:5px;">Ticket Subject</h2>
+                                <span id="detail-tkt-number" style="font-weight:600; color:var(--primary); font-size:14px;">TKT-1000</span>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <span id="detail-tkt-status" class="badge badge-success">Open</span>
+                                <span id="detail-tkt-priority" class="badge badge-danger">High</span>
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:15px; border-radius:8px; margin-top:20px; font-size:13px; line-height:1.5;">
+                            <p id="detail-tkt-message">Message text...</p>
+                        </div>
+
+                        <!-- Ticket Replies Thread -->
+                        <div class="thread-container" id="detail-tkt-thread"></div>
+
+                        <!-- Post Ticket Reply Form -->
+                        <div id="ticket-reply-form-section" style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:20px;">
+                            <form id="ticket-reply-form">
+                                <div class="form-group">
+                                    <label for="tkt-reply-msg">Post a Reply</label>
+                                    <textarea id="tkt-reply-msg" class="form-control" rows="3" placeholder="Respond to the thread..." required></textarea>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <button type="submit" id="btn-submit-reply" class="btn">Send Reply</button>
+                                    <button type="button" id="btn-close-ticket" class="btn btn-danger" onclick="closeTicketAction()">Close Ticket</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Security Settings -->
+                <div id="tab-security" class="tab-pane" style="display: none;">
+                    <div class="card">
+                        <h2>Change Password</h2>
+                        <div id="security-alert"></div>
+                        <form id="change-pass-form">
+                            <div class="form-group">
+                                <label for="pass-current">Current Password *</label>
+                                <input type="password" id="pass-current" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pass-new">New Password (min. 6 chars) *</label>
+                                <input type="password" id="pass-new" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pass-confirm">Confirm New Password *</label>
+                                <input type="password" id="pass-confirm" class="form-control" required>
+                            </div>
+                            <button type="submit" id="btn-change-pass" class="btn">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = localStorage.getItem('apiBaseUrl') || 
+            (window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8000' : 'http://localhost:8000');
+        let activeTicketNumber = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+            if (!isAuthenticated) {
+                window.location.href = 'login.html';
+                return;
+            }
+            fetchProfileData();
+            fetchUserTickets();
+            fetchActiveLicenses();
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(`${API_BASE}/api/logout/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+            } catch(e) {}
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).style.display = 'block';
+            document.getElementById(`link-${tabId}`).classList.add('active');
+        }
+
+        async function fetchProfileData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/me/`, {
+                    credentials: 'include',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    }
+                });
+                const res = await response.json();
+                if (response.ok && res.success) {
+                    const userObj = res.data || {};
+                    // Populate welcome name
+                    document.getElementById('welcome-user-name').innerText = userObj.first_name || userObj.username;
+                    
+                    // Populate forms
+                    document.getElementById('prof-email').value = userObj.email || '';
+                    document.getElementById('prof-first').value = userObj.first_name || '';
+                    document.getElementById('prof-last').value = userObj.last_name || '';
+                    
+                    if (userObj.is_staff || userObj.is_superuser) {
+                        document.getElementById('admin-nav-item').style.display = 'block';
+                    }
+
+                    const profile = userObj.profile || {};
+                    document.getElementById('prof-cnic').value = profile.cnic || '';
+                    document.getElementById('prof-phone').value = profile.phone_number || '';
+                    document.getElementById('prof-country').value = profile.country || '';
+                    document.getElementById('prof-address').value = profile.address || '';
+                    if (profile.organization) {
+                        document.getElementById('prof-org').value = profile.organization.name || '';
+                    }
+                }
+            } catch (err) {}
+        }
+
+        // Profile Form PATCH
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-profile');
+            btn.disabled = true;
+            btn.innerText = 'Saving Changes...';
+
+            const payload = {
+                first_name: document.getElementById('prof-first').value.trim(),
+                last_name: document.getElementById('prof-last').value.trim(),
+                phone_number: document.getElementById('prof-phone').value.trim(),
+                country: document.getElementById('prof-country').value.trim(),
+                address: document.getElementById('prof-address').value.trim()
+            };
+
+            const alertEl = document.getElementById('profile-alert');
+            alertEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/me/`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                btn.disabled = false;
+                btn.innerText = 'Update Profile';
+
+                if (response.ok) {
+                    alertEl.innerHTML = `<div class="alert alert-success">Profile changes saved successfully!</div>`;
+                    fetchProfileData();
+                } else {
+                    alertEl.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to save changes.'}</div>`;
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = 'Update Profile';
+                alertEl.innerHTML = `<div class="alert alert-danger">Network Error: Failed to PATCH profile.</div>`;
+            }
+        });
+
+        // Tickets listing
+        async function fetchUserTickets() {
+            const container = document.getElementById('tickets-container');
+            container.innerHTML = `<div class="spinner-container"><div class="spinner"></div></div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+                
+                container.innerHTML = '';
+                if (response.ok && res.success) {
+                    if (res.data.length === 0) {
+                        container.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">You have no submitted tickets.</p>`;
+                    } else {
+                        res.data.forEach(tkt => {
+                            const badgeClass = tkt.status === 'closed' ? 'badge-danger' : (tkt.status === 'resolved' ? 'badge-success' : 'badge-warning');
+                            const div = document.createElement('div');
+                            div.className = 'ticket-item';
+                            div.onclick = () => viewTicketDetails(tkt.ticket_number);
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:#ffffff; font-size:14px;">${escapeHtml(tkt.subject)}</strong>
+                                    <span class="badge ${badgeClass}">${escapeHtml(tkt.status)}</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--text-muted);">
+                                    <span>${escapeHtml(tkt.ticket_number)} | Category: ${escapeHtml(tkt.category)}</span>
+                                    <span>Updated: ${new Date(tkt.updated_at).toLocaleDateString()}</span>
+                                </div>
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                }
+            } catch (err) {
+                container.innerHTML = `<p style="color:var(--danger); font-size:13px;">Failed to load tickets.</p>`;
+            }
+        }
+
+        function showNewTicketForm() {
+            document.getElementById('tickets-list-view').style.display = 'none';
+            document.getElementById('new-ticket-view').style.display = 'block';
+        }
+
+        function hideNewTicketForm() {
+            document.getElementById('tickets-list-view').style.display = 'block';
+            document.getElementById('new-ticket-view').style.display = 'none';
+        }
+
+        // New Ticket Submit
+        document.getElementById('new-ticket-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-create-ticket');
+            btn.disabled = true;
+            btn.innerText = 'Creating Ticket...';
+
+            const payload = {
+                subject: document.getElementById('tkt-subject').value.trim(),
+                category: document.getElementById('tkt-category').value,
+                priority: document.getElementById('tkt-priority').value,
+                message: document.getElementById('tkt-message').value.trim()
+            };
+
+            const alertEl = document.getElementById('new-ticket-alert');
+            alertEl.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                btn.disabled = false;
+                btn.innerText = 'Submit Ticket';
+
+                if (response.ok && data.success) {
+                    alertEl.innerHTML = `<div class="alert alert-success">Ticket created successfully!</div>`;
+                    document.getElementById('new-ticket-form').reset();
+                    setTimeout(() => {
+                        hideNewTicketForm();
+                        fetchUserTickets();
+                    }, 800);
+                } else {
+                    alertEl.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to submit ticket.'}</div>`;
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = 'Submit Ticket';
+                alertEl.innerHTML = `<div class="alert alert-danger">Network Error: Failed to create ticket.</div>`;
+            }
+        });
+
+        // View Ticket detail thread
+        async function viewTicketDetails(tktNum) {
+            activeTicketNumber = tktNum;
+            document.getElementById('tickets-list-view').style.display = 'none';
+            document.getElementById('ticket-detail-view').style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${tktNum}/`, {
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+                const res = await response.json();
+
+                if (response.ok && res.success) {
+                    const t = res.data;
+                    document.getElementById('detail-tkt-subject').innerText = t.subject;
+                    document.getElementById('detail-tkt-number').innerText = t.ticket_number;
+                    
+                    const statusEl = document.getElementById('detail-tkt-status');
+                    statusEl.innerText = t.status;
+                    statusEl.className = `badge ${t.status === 'closed' ? 'badge-danger' : (t.status === 'resolved' ? 'badge-success' : 'badge-warning')}`;
+                    
+                    document.getElementById('detail-tkt-priority').innerText = t.priority;
+                    document.getElementById('detail-tkt-message').innerText = t.message;
+
+                    // Toggle reply section based on status
+                    document.getElementById('ticket-reply-form-section').style.display = t.status === 'closed' ? 'none' : 'block';
+
+                    // Populate Replies Thread
+                    const threadContainer = document.getElementById('detail-tkt-thread');
+                    threadContainer.innerHTML = '';
+                    if (t.replies && t.replies.length > 0) {
+                        t.replies.forEach(rep => {
+                            const rDiv = document.createElement('div');
+                            const isStaff = rep.replied_by_staff;
+                            rDiv.className = `thread-reply ${isStaff ? 'reply-staff' : 'reply-customer'}`;
+                            rDiv.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600; font-size:11px;">
+                                    <span>${escapeHtml(rep.author_name)} ${isStaff ? '(Support Agent)' : '(You)'}</span>
+                                </div>
+                                <p>${escapeHtml(rep.message)}</p>
+                                <span style="font-size:9px; color:var(--text-muted); display:block; text-align:right; margin-top:4px;">${new Date(rep.created_at).toLocaleTimeString()}</span>
+                            `;
+                            threadContainer.appendChild(rDiv);
+                        });
+                        threadContainer.scrollTop = threadContainer.scrollHeight;
+                    } else {
+                        threadContainer.innerHTML = `<p style="color:var(--text-muted); font-size:12px; text-align:center; padding:10px;">No replies logged in this thread.</p>`;
+                    }
+                }
+            } catch (err) {}
+        }
+
+        // Post Reply in ticket thread
+        document.getElementById('ticket-reply-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-reply');
+            btn.disabled = true;
+
+            const replyMsg = document.getElementById('tkt-reply-msg').value.trim();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${activeTicketNumber}/reply/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ message: replyMsg })
+                });
+
+                const data = await response.json();
+                btn.disabled = false;
+
+                if (response.ok && data.success) {
+                    document.getElementById('tkt-reply-msg').value = '';
+                    viewTicketDetails(activeTicketNumber);
+                } else {
+                    alert(data.message || 'Failed to submit reply.');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                alert('Network Error: Failed to post reply.');
+            }
+        });
+
+        // Close ticket action
+        async function closeTicketAction() {
+            if (!confirm("Are you sure you want to resolve and close this support ticket?")) return;
+            try {
+                const response = await fetch(`${API_BASE}/api/tickets/${activeTicketNumber}/status/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ status: 'closed' })
+                });
+                const res = await response.json();
+                if (response.ok && res.success) {
+                    viewTicketDetails(activeTicketNumber);
+                } else {
+                    alert(res.message || 'Failed to close ticket.');
+                }
+            } catch (err) {
+                alert('Network Error: Failed to transition status.');
+            }
+        }
+
+        function hideTicketDetails() {
+            document.getElementById('ticket-detail-view').style.display = 'none';
+            document.getElementById('tickets-list-view').style.display = 'block';
+            fetchUserTickets();
+        }
+
+        // Change Password Form POST
+        document.getElementById('change-pass-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alertEl = document.getElementById('security-alert');
+            alertEl.innerHTML = '';
+
+            const current = document.getElementById('pass-current').value;
+            const newPass = document.getElementById('pass-new').value;
+            const confirmNew = document.getElementById('pass-confirm').value;
+
+            if (newPass !== confirmNew) {
+                alertEl.innerHTML = `<div class="alert alert-danger">New passwords do not match.</div>`;
+                return;
+            }
+
+            const btn = document.getElementById('btn-change-pass');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/change-password/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({
+                        current_password: current,
+                        new_password: newPass,
+                        confirm_new_password: confirmNew
+                    })
+                });
+
+                const data = await response.json();
+                btn.disabled = false;
+
+                if (response.ok) {
+                    alertEl.innerHTML = `<div class="alert alert-success">${data.message || 'Password changed successfully.'}</div>`;
+                    document.getElementById('change-pass-form').reset();
+                } else {
+                    alertEl.innerHTML = `<div class="alert alert-danger">${data.error || (data.errors ? data.errors.join(' ') : 'Change failed.')}</div>`;
+                }
+            } catch (err) {
+                btn.disabled = false;
+                alertEl.innerHTML = `<div class="alert alert-danger">Network Error: Failed to change password.</div>`;
+            }
+        });
+
+        async function fetchActiveLicenses() {
+            const container = document.getElementById('active-licenses-container');
+            try {
+                const [prodRes, servRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/products/`, { credentials: 'include' }),
+                    fetch(`${API_BASE}/api/services/`, { credentials: 'include' })
+                ]);
+                const prods = await prodRes.json();
+                const servs = await servRes.json();
+
+                container.innerHTML = '';
+                let itemsAdded = 0;
+
+                if (prods.success && prods.data) {
+                    prods.data.forEach(prod => {
+                        const div = document.createElement('div');
+                        div.className = 'card';
+                        div.style.padding = '15px';
+                        div.style.marginBottom = '0';
+                        div.style.background = 'rgba(255, 255, 255, 0.02)';
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h4 style="color:#ffffff; font-size:13px; margin-bottom:0;">${escapeHtml(prod.name)}</h4>
+                                <span class="badge badge-success" style="font-size:8px; padding:2px 6px;">Active Product</span>
+                            </div>
+                            <p style="font-size:11px; color:var(--text-muted); margin-bottom:0; line-height:1.3;">Licensed enterprise product suite application.</p>
+                        `;
+                        container.appendChild(div);
+                        itemsAdded++;
+                    });
+                }
+
+                if (servs.success && servs.data) {
+                    servs.data.forEach(serv => {
+                        const div = document.createElement('div');
+                        div.className = 'card';
+                        div.style.padding = '15px';
+                        div.style.marginBottom = '0';
+                        div.style.background = 'rgba(255, 255, 255, 0.02)';
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h4 style="color:#ffffff; font-size:13px; margin-bottom:0;">${escapeHtml(serv.name)}</h4>
+                                <span class="badge badge-info" style="font-size:8px; padding:2px 6px;">Active Service</span>
+                            </div>
+                            <p style="font-size:11px; color:var(--text-muted); margin-bottom:0; line-height:1.3;">Subscribed managed service SLA agreement.</p>
+                        `;
+                        container.appendChild(div);
+                        itemsAdded++;
+                    });
+                }
+
+                if (itemsAdded === 0) {
+                    container.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">No active subscriptions or licenses.</p>';
+                }
+            } catch (err) {
+                container.innerHTML = '<p style="color:var(--danger); font-size:13px;">Error loading subscriptions.</p>';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

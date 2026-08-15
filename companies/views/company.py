@@ -76,12 +76,19 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(user)
+        
         from roles.services import PermissionService
         scope = PermissionService.get_permission_scope(user, 'companies', 'ASSIGN')
+        
+        kwargs = {}
+        if org:
+            kwargs['organization'] = org
         if scope == 'NONE':
-            return serializer.save(assigned_salesperson=user)
-        else:
-            return serializer.save()
+            kwargs['assigned_salesperson'] = user
+            
+        return serializer.save(**kwargs)
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -130,6 +137,8 @@ class CompanyViewSet(viewsets.ModelViewSet):
         )
 
     def destroy(self, request, *args, **kwargs):
+        from django.db.models import ProtectedError
+        from core.api.responses import api_error
         instance = self.get_object()
         try:
             self.perform_destroy(instance)
@@ -138,4 +147,4 @@ class CompanyViewSet(viewsets.ModelViewSet):
             contacts_count = instance.contacts.count()
             opps_count = instance.opportunities.count()
             msg = f"Cannot delete company because it has {contacts_count} related contacts and {opps_count} opportunities."
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error(message=msg, status_code=status.HTTP_400_BAD_REQUEST)

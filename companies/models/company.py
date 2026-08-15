@@ -30,6 +30,7 @@ class Company(models.Model):
     """
     Company model representing Accounts in the CRM system.
     """
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='companies')
     name = models.CharField(max_length=255, unique=True, db_index=True)
     email = models.EmailField(blank=True, null=True, db_index=True)
     

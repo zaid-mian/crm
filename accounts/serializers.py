@@ -53,6 +53,23 @@ class PlatformSignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email address already exists.")
         return email
 
+    def validate_cnic(self, value):
+        import re
+        val = value.strip()
+        pattern = r'^\d{5}-?\d{7}-?\d{1}$'
+        if not re.match(pattern, val):
+            raise serializers.ValidationError("CNIC must be 13 digits (dashes optional, e.g. 12345-6789012-3).")
+        return val
+
+    def validate_phone_number(self, value):
+        import re
+        # Normalize: strip dashes and spaces
+        val = value.replace('-', '').replace(' ', '').strip()
+        pattern = r'^\+?\d{11,15}$'
+        if not re.match(pattern, val):
+            raise serializers.ValidationError("Phone number must be 11-15 digits, optionally starting with +.")
+        return val
+
     def create(self, validated_data):
         email = validated_data['email']
         password = validated_data['password']

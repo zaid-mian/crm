@@ -62,8 +62,10 @@ class PaymentListSerializer(serializers.ModelSerializer):
             'payment_date',
             'assigned_salesperson_name',
             'currency',
+            'organization',
             'created_at',
         ]
+        read_only_fields = ['organization']
 
     def get_payment_method(self, obj):
         latest = obj.transactions.order_by('-payment_date', '-created_at').first()
@@ -111,7 +113,9 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'can_edit',
             'created_at',
             'updated_at',
+            'organization',
         ]
+        read_only_fields = ['organization']
 
     def get_customer_name(self, obj):
         contact = obj.opportunity.primary_contact if obj.opportunity_id else None

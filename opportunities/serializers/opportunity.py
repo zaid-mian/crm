@@ -30,6 +30,7 @@ class OpportunityListSerializer(serializers.ModelSerializer):
             'pipeline',
             'pipeline_stage',
             'priority',
+            'organization',
             'created_at',
         ]
         read_only_fields = fields
@@ -69,6 +70,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             'pipeline',
             'pipeline_stage',
             'priority',
+            'organization',
             'created_at',
             'updated_at',
         ]
@@ -109,10 +111,12 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
             'lost_reason',
             'pipeline',
             'pipeline_stage',
+            'organization',
         ]
         read_only_fields = [
             'id',
             'opportunity_code',
+            'organization',
             'company',
             'company_name',
             'source_lead',

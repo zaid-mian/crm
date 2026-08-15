@@ -37,6 +37,7 @@ class PaymentInvoiceService:
             opportunity=opportunity,
             total_amount=amount,
             assigned_salesperson=opportunity.assigned_salesperson,
+            organization=opportunity.organization,
         )
         PaymentActivityService.log(
             payment,

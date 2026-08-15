@@ -114,6 +114,6 @@ class CompanyViewSetTestCase(APITestCase):
         response = self.client.delete(self.detail_url_a)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"],
+            response.data["message"],
             "Cannot delete company because it has 1 related contacts and 1 opportunities."
         )

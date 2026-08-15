@@ -42,7 +42,49 @@ class RoleViewSet(viewsets.ModelViewSet):
     serializer_class = RoleSerializer
     permission_classes = [IsAdminRole]
 
+    def list(self, request, *args, **kwargs):
+        from core.api.responses import api_success
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return api_success(data=serializer.data, message="Roles retrieved successfully")
+
+    def retrieve(self, request, *args, **kwargs):
+        from core.api.responses import api_success
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return api_success(data=serializer.data, message="Role retrieved successfully")
+
+    def create(self, request, *args, **kwargs):
+        from core.api.responses import api_success
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return api_success(data=serializer.data, message="Role created successfully", status_code=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        from core.api.responses import api_success
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Prevent renaming of system roles
+        if instance.is_system:
+            if request.data.get('name') and request.data.get('name') != instance.name:
+                return Response(
+                    {"detail": "System role names cannot be modified."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return api_success(data=serializer.data, message="Role updated successfully")
+
     def destroy(self, request, *args, **kwargs):
+        from core.api.responses import api_success
         instance = self.get_object()
         
         # Prevent deletion of system roles
@@ -59,27 +101,16 @@ class RoleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        return super().destroy(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        
-        # Prevent renaming of system roles
-        if instance.is_system:
-            if request.data.get('name') and request.data.get('name') != instance.name:
-                return Response(
-                    {"detail": "System role names cannot be modified."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-                
-        return super().update(request, *args, **kwargs)
+        self.perform_destroy(instance)
+        return api_success(message="Role deleted successfully")
 
     @action(detail=False, methods=['get'], url_path='resources')
     def resources(self, request):
         """Returns the list of all dynamically auto-discovered CRM resources."""
+        from core.api.responses import api_success
         resources = CRMResource.objects.all().order_by('name')
         serializer = CRMResourceSerializer(resources, many=True)
-        return Response(serializer.data)
+        return api_success(data=serializer.data, message="Resources retrieved successfully")
 
     @action(detail=True, methods=['get', 'put'], url_path='permissions')
     def permissions(self, request, pk=None):
@@ -87,12 +118,13 @@ class RoleViewSet(viewsets.ModelViewSet):
         Retrieves or overwrites the permission scope configuration matrix for a role.
         Updates are processed within an atomic transaction.
         """
+        from core.api.responses import api_success
         role = self.get_object()
         
         if request.method == 'GET':
             permissions_qs = RolePermission.objects.filter(role=role).select_related('resource')
             serializer = RolePermissionSerializer(permissions_qs, many=True)
-            return Response(serializer.data)
+            return api_success(data=serializer.data, message="Permissions retrieved successfully")
             
         elif request.method == 'PUT':
             # Support list-based payload mapping for bulk updates
@@ -126,4 +158,4 @@ class RoleViewSet(viewsets.ModelViewSet):
                 
             # Query updated list and return
             updated_qs = RolePermission.objects.filter(role=role).select_related('resource')
-            return Response(RolePermissionSerializer(updated_qs, many=True).data)
+            return api_success(data=RolePermissionSerializer(updated_qs, many=True).data, message="Permissions updated successfully")

@@ -112,9 +112,9 @@ class LeadWorkflowService:
         old_stage = lead.pipeline_stage
         old_pipeline = lead.pipeline
 
-        # 1. Find Company by name__iexact
+        # 1. Find Company by name__iexact AND organization
         c_name = lead.company_name.strip()
-        company = Company.objects.filter(name__iexact=c_name).first()
+        company = Company.objects.filter(name__iexact=c_name, organization=lead.organization).first()
 
         if company:
             # Merge blank Company fields only
@@ -151,6 +151,7 @@ class LeadWorkflowService:
         else:
             # Create Company
             company = Company.objects.create(
+                organization=lead.organization,
                 name=c_name,
                 phone=lead.phone or '',
                 email=lead.email,
@@ -198,6 +199,7 @@ class LeadWorkflowService:
         else:
             # Create Contact
             contact = Contact.objects.create(
+                organization=lead.organization,
                 full_name=lead.full_name,
                 company=company,
                 phone_number=lead.phone or '',
@@ -229,6 +231,7 @@ class LeadWorkflowService:
 
         # 3. Create Opportunity
         opp = Opportunity.objects.create(
+            organization=lead.organization,
             name=deal_name,
             company=company,
             source_lead=lead,

@@ -3,10 +3,22 @@ from django.db.models import Avg
 from .models import Product, Module, Service, ServiceFeature, PricingPlan, PlanModule, Discount, Feedback
 from catalog.utils import can_user_review
 
+from django.core.exceptions import ValidationError
+
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
-        fields = ['id', 'name', 'code', 'description', 'is_active', 'display_order']
+        fields = ['id', 'product', 'name', 'code', 'description', 'is_active', 'display_order']
+
+    def validate(self, attrs):
+        instance = self.instance or Module()
+        for k, v in attrs.items():
+            setattr(instance, k, v)
+        try:
+            instance.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+        return attrs
 
 
 class ServiceFeatureSerializer(serializers.ModelSerializer):
@@ -20,6 +32,16 @@ class DiscountSerializer(serializers.ModelSerializer):
         model = Discount
         fields = ['id', 'name', 'discount_type', 'value', 'is_active', 'start_date', 'end_date']
 
+    def validate(self, attrs):
+        instance = self.instance or Discount()
+        for k, v in attrs.items():
+            setattr(instance, k, v)
+        try:
+            instance.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+        return attrs
+
 
 class PricingPlanSerializer(serializers.ModelSerializer):
     final_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
@@ -28,7 +50,7 @@ class PricingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = PricingPlan
         fields = [
-            'id', 'name', 'price', 'final_price', 'currency', 
+            'id', 'product', 'service', 'name', 'price', 'final_price', 'currency', 
             'billing_cycle', 'is_active', 'display_order', 'active_discount'
         ]
 
@@ -38,11 +60,47 @@ class PricingPlanSerializer(serializers.ModelSerializer):
             return DiscountSerializer(discount).data
         return None
 
+    def validate(self, attrs):
+        instance = self.instance or PricingPlan()
+        for k, v in attrs.items():
+            setattr(instance, k, v)
+        try:
+            instance.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+        return attrs
+
+
+class PlanModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanModule
+        fields = ['id', 'plan', 'module', 'is_enabled', 'limit_value']
+
+    def validate(self, attrs):
+        instance = self.instance or PlanModule()
+        for k, v in attrs.items():
+            setattr(instance, k, v)
+        try:
+            instance.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+        return attrs
+
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'slug', 'description', 'image', 'is_active', 'display_order']
+
+    def validate(self, attrs):
+        instance = self.instance or Product()
+        for k, v in attrs.items():
+            setattr(instance, k, v)
+        try:
+            instance.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+        return attrs
 
 
 class FeedbackSerializer(serializers.ModelSerializer):

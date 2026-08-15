@@ -250,3 +250,132 @@ class AccountsAPITestCase(TestCase):
         self.assertEqual(crm_profile.user_type, 'ADMIN')
         self.assertEqual(crm_profile.role.name, "Administrator")
 
+    def test_signup_validation_errors(self):
+        """Verify malformed cnic and phone numbers are rejected by PlatformSignupSerializer."""
+        url = reverse('accounts:api_register')
+        
+        # 1. Invalid CNIC (short digits)
+        bad_cnic_data = self.signup_data.copy()
+        bad_cnic_data["cnic"] = "12345-abc"
+        bad_cnic_data["email"] = "error1@test.com"
+        response = self.client.post(url, bad_cnic_data, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cnic", response.json()["errors"])
+
+        # 2. Invalid phone (letters included)
+        bad_phone_data = self.signup_data.copy()
+        bad_phone_data["phone_number"] = "0333-111-xyz"
+        bad_phone_data["email"] = "error2@test.com"
+        response = self.client.post(url, bad_phone_data, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("phone_number", response.json()["errors"])
+
+
+class CORSSessionCSRFTestCase(TestCase):
+    def test_cors_allowed_origin(self):
+        """CORS request from allowed origin returns correct headers."""
+        url = reverse('accounts:api_register')
+        # Allowed origin
+        response = self.client.options(
+            url, 
+            HTTP_ORIGIN="http://localhost:3000",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:3000")
+
+        # Disallowed origin
+        response_disallowed = self.client.options(
+            url, 
+            HTTP_ORIGIN="http://disallowed-domain.com",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST"
+        )
+        # In django-cors-headers, requests from disallowed origins do not get Access-Control-Allow-Origin header
+        self.assertNotIn("Access-Control-Allow-Origin", response_disallowed.headers)
+
+    def test_csrf_protection_active(self):
+        """CSRF middleware protects mutating state APIs when session authentication is active."""
+        # Create active user
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.create_user(username="test_csrf_u", email="csrf@test.com", password="password", is_active=True)
+        
+        # Initialize client with enforce_csrf_checks=True
+        from django.test import Client
+        client = Client(enforce_csrf_checks=True)
+        client.login(username="test_csrf_u", password="password")
+        
+        # Call mutating endpoint without CSRF token (should fail with 403 Forbidden)
+        url = reverse('accounts:api_register')
+        response = client.post(url, {})
+        self.assertEqual(response.status_code, 403)
+
+
+class PasswordResetAPITestCase(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="reset_user@test.com",
+            email="reset_user@test.com",
+            password="oldpassword123",
+            is_active=True
+        )
+
+    def test_password_reset_api_flow(self):
+        """Verify successful password reset request and API confirmation flow."""
+        from django.core import mail
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.contrib.auth.tokens import default_token_generator
+
+        # 1. POST forgot-password request
+        forgot_url = reverse('accounts:api_forgot_password')
+        response = self.client.post(forgot_url, {"email": "reset_user@test.com"})
+        self.assertEqual(response.status_code, 200)
+
+        # 2. Check console mail outbox
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertIn("reset-password", email.body)
+
+        # Generate fresh token & uidb64 to test API directly
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        confirm_url = reverse('accounts:api_password_reset_confirm')
+
+        # 3. Mismatched passwords should return 400
+        payload_mismatch = {
+            "uidb64": uidb64,
+            "token": token,
+            "new_password": "NewSecurePassword123!",
+            "confirm_password": "DifferentPassword123!"
+        }
+        res_mismatch = self.client.post(confirm_url, payload_mismatch)
+        self.assertEqual(res_mismatch.status_code, 400)
+
+        # 4. Invalid token should return 400
+        payload_invalid_token = {
+            "uidb64": uidb64,
+            "token": "invalid-token-123",
+            "new_password": "NewSecurePassword123!",
+            "confirm_password": "NewSecurePassword123!"
+        }
+        res_token = self.client.post(confirm_url, payload_invalid_token)
+        self.assertEqual(res_token.status_code, 400)
+
+        # 5. Correct payload reset succeeds
+        payload_success = {
+            "uidb64": uidb64,
+            "token": token,
+            "new_password": "NewSecurePassword123!",
+            "confirm_password": "NewSecurePassword123!"
+        }
+        res_success = self.client.post(confirm_url, payload_success)
+        self.assertEqual(res_success.status_code, 200)
+
+        # 6. Verify password actually updated
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewSecurePassword123!"))
+

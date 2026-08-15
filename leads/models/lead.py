@@ -46,6 +46,7 @@ class Lead(models.Model):
         OTHER = 'OTHER', 'Other'
 
     # Core Fields
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='leads')
     full_name = models.CharField(max_length=255, db_index=True)
     phone = models.CharField(max_length=20, db_index=True, blank=True, default='', help_text="Phone number for the lead.")
     email = models.EmailField(blank=True, null=True, db_index=True)
@@ -205,6 +206,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='USER')
     role = models.ForeignKey('roles.Role', on_delete=models.SET_NULL, null=True, blank=True, related_name='profiles')
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='user_profiles')
 
     def __str__(self):
         return f"{self.user.username} - {self.user_type}"

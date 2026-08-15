@@ -30,6 +30,7 @@ class LeadListSerializer(serializers.ModelSerializer):
             'pipeline_stage',
             'assigned_salesperson',
             'is_converted',
+            'organization',
             'created_at',
             'updated_at',
         ]
@@ -71,6 +72,7 @@ class LeadDetailSerializer(serializers.ModelSerializer):
             'converted_at',
             'lost_reason',
             'lost_notes',
+            'organization',
             'created_at',
             'updated_at',
             'activities',
@@ -114,8 +116,9 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             'pipeline',
             'pipeline_stage',
             'assigned_salesperson',
+            'organization',
         ]
-        read_only_fields = ['id', 'lead_code', 'pipeline_stage']
+        read_only_fields = ['id', 'lead_code', 'pipeline_stage', 'organization']
 
     def validate(self, attrs):
         # Default priority to MEDIUM on the backend when not provided
@@ -202,8 +205,9 @@ class LeadUpdateSerializer(serializers.ModelSerializer):
             'contact_attempts',
             'pipeline',
             'pipeline_stage',
+            'organization',
         ]
-        read_only_fields = ['id', 'lead_code']
+        read_only_fields = ['id', 'lead_code', 'organization']
 
     def validate(self, attrs):
         email = attrs.get('email', self.instance.email if self.instance else None)

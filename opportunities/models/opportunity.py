@@ -17,6 +17,7 @@ class Opportunity(models.Model):
     """
     Opportunity model representing a qualified sales deal in the CRM system.
     """
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='opportunities')
     name = models.CharField(max_length=255, db_index=True)
     company = models.ForeignKey(
         'companies.Company',

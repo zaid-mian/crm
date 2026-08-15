@@ -130,6 +130,10 @@ class PermissionEngineTests(TestCase):
         from django.core.cache import cache
         cache.clear()
         
+        # Setup Organization
+        from accounts.models import Organization
+        self.org = Organization.objects.create(name="Test Org")
+        
         # Setup system roles
         self.admin_role = Role.objects.create(name="Admin Role", is_system=False)
         self.sales_role = Role.objects.create(name="Sales Role", is_system=False)
@@ -145,10 +149,12 @@ class PermissionEngineTests(TestCase):
         self.admin_user = User.objects.create_user(username="admin_u", password="password")
         self.sales_user = User.objects.create_user(username="sales_u", password="password")
         
-        # Map roles
+        # Map roles and organizations
         self.admin_user.profile.role = self.admin_role
+        self.admin_user.profile.organization = self.org
         self.admin_user.profile.save()
         self.sales_user.profile.role = self.sales_role
+        self.sales_user.profile.organization = self.org
         self.sales_user.profile.save()
 
     def test_permission_scope_resolution(self):
@@ -184,7 +190,7 @@ class PermissionEngineTests(TestCase):
         cache_key = PermissionService.get_permission_cache_key(self.sales_user.id)
         self.assertIsNotNone(cache.get(cache_key))
         
-        # Modify UserProfile (change role to admin_role)
+        # Modify UserProfile (change role to admin)
         self.sales_user.profile.role = self.admin_role
         self.sales_user.profile.save()
         
@@ -239,11 +245,13 @@ class PermissionEngineTests(TestCase):
         
         # Create some leads assigned to different people
         lead_sales = Lead.objects.create(
+            organization=self.org,
             full_name="Sales Lead",
             assigned_salesperson=self.sales_user,
             status="NEW"
         )
         Lead.objects.create(
+            organization=self.org,
             full_name="Other Lead",
             assigned_salesperson=self.admin_user,
             status="NEW"
@@ -269,6 +277,10 @@ class RoleAPITests(APITestCase):
         from django.core.cache import cache
         cache.clear()
         
+        # Setup Organization
+        from accounts.models import Organization
+        self.org = Organization.objects.create(name="Api Test Org")
+        
         # Populate CRMResource domain
         self.leads_res, _ = CRMResource.objects.get_or_create(codename="leads", defaults={"name": "Leads"})
         
@@ -290,10 +302,12 @@ class RoleAPITests(APITestCase):
         self.admin_user = User.objects.create_user(username="admin_api", password="password")
         self.sales_user = User.objects.create_user(username="sales_api", password="password")
         
-        # Assign roles
+        # Assign roles and organization
         self.admin_user.profile.role = self.admin_role
+        self.admin_user.profile.organization = self.org
         self.admin_user.profile.save()
         self.sales_user.profile.role = self.sales_role
+        self.sales_user.profile.organization = self.org
         self.sales_user.profile.save()
 
     def test_list_roles_requires_admin(self):
@@ -313,7 +327,7 @@ class RoleAPITests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 4)
+        self.assertEqual(len(response.data["data"]), 4)
 
     def test_create_role(self):
         """Verify administrator can create a new custom role."""
@@ -323,8 +337,8 @@ class RoleAPITests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], "Support Agent")
-        self.assertFalse(response.data["is_system"])
+        self.assertEqual(response.data["data"]["name"], "Support Agent")
+        self.assertFalse(response.data["data"]["is_system"])
 
     def test_create_role_duplicate_name_fails(self):
         """Verify name validation prevents duplicate role creation."""
@@ -373,7 +387,7 @@ class RoleAPITests(APITestCase):
         
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_resources_list(self):
         """Verify list of auto-discovered resource codenames is returned."""
@@ -382,8 +396,8 @@ class RoleAPITests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["codename"], "leads")
+        self.assertEqual(len(response.data["data"]), 1)
+        self.assertEqual(response.data["data"][0]["codename"], "leads")
 
     def test_get_and_update_permissions_matrix(self):
         """Verify matrix retrieves and atomic overwrites work."""
@@ -394,7 +408,7 @@ class RoleAPITests(APITestCase):
         # 1. GET returns empty initial matrix
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(len(response.data["data"]), 0)
         
         # 2. PUT updates matrix
         payload = [
@@ -403,7 +417,7 @@ class RoleAPITests(APITestCase):
         ]
         response = self.client.put(url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data["data"]), 2)
         
         # 3. PUT with invalid resource code returns 400
         payload_invalid = [

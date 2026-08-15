@@ -21,6 +21,7 @@ class ContactListSerializer(serializers.ModelSerializer):
             'assigned_salesperson',
             'assigned_salesperson_name',
             'status',
+            'organization',
             'created_at',
             'updated_at',
         ]
@@ -62,6 +63,7 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             'assigned_salesperson_name',
             'status',
             'notes',
+            'organization',
             'created_at',
             'updated_at',
             'related_opportunities',
@@ -120,8 +122,9 @@ class ContactCreateSerializer(serializers.ModelSerializer):
             'assigned_salesperson',
             'status',
             'notes',
+            'organization',
         ]
-        read_only_fields = ['id', 'contact_code']
+        read_only_fields = ['id', 'contact_code', 'organization']
 
     def validate_phone_number(self, value):
         if value and Contact.objects.filter(phone_number=value, is_deleted=False).exists():
@@ -155,8 +158,9 @@ class ContactUpdateSerializer(serializers.ModelSerializer):
             'assigned_salesperson',
             'status',
             'notes',
+            'organization',
         ]
-        read_only_fields = ['id', 'contact_code']
+        read_only_fields = ['id', 'contact_code', 'organization']
 
     def validate_phone_number(self, value):
         if not value:

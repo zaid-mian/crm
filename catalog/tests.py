@@ -372,3 +372,57 @@ class CatalogFeedbackAPITest(TestCase):
         self.assertEqual(response_admin.json()['data'][0]['target_name'], "Feedback Product")
 
 
+class CatalogAdminCRUDPermissionsTestCase(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.standard_user = User.objects.create_user(username="standard_user", email="std@test.com", password="password")
+        self.admin_user = User.objects.create_superuser(username="admin_user", email="adm@test.com", password="password")
+        
+        self.product = Product.objects.create(name="Product A", slug="product-a", is_active=True)
+        self.module = Module.objects.create(product=self.product, name="Module A", code="mod-a")
+        self.plan = PricingPlan.objects.create(product=self.product, name="Plan A", price=9.99, billing_cycle="monthly")
+
+    def test_standard_user_denied_crud(self):
+        """Standard user cannot perform write operations on catalog admin endpoints."""
+        self.client.login(username="standard_user", password="password")
+        
+        # Product Create
+        response = self.client.post(reverse("catalog:admin-product-list"), {"name": "New Product", "slug": "new-p"})
+        self.assertEqual(response.status_code, 403)
+        
+        # Module Update
+        url = reverse("catalog:admin-module-detail", kwargs={"id": self.module.id})
+        response = self.client.patch(url, {"name": "Updated Module"})
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_user_allowed_crud(self):
+        """Platform administrator can perform write operations on catalog admin endpoints."""
+        self.client.login(username="admin_user", password="password")
+        
+        # 1. Product Create
+        response = self.client.post(reverse("catalog:admin-product-list"), {
+            "name": "New SaaS",
+            "slug": "new-saas",
+            "description": "New SaaS product"
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Product.objects.filter(slug="new-saas").count(), 1)
+        product_id = response.json()["data"]["id"]
+
+        # 2. Custom activate/deactivate action
+        response = self.client.post(reverse("catalog:admin-product-deactivate", kwargs={"id": product_id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.get(id=product_id).is_active)
+
+        # 3. Model clean validation rule (linked to neither product nor service)
+        response = self.client.post(reverse("catalog:admin-pricingplan-list"), {
+            "name": "Orphan Plan",
+            "price": "19.99",
+            "billing_cycle": "monthly"
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("errors", response.json())
+
+
+

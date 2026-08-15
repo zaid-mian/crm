@@ -75,12 +75,19 @@ class ContactViewSet(
 
     def perform_create(self, serializer):
         user = self.request.user
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(user)
+        
         from roles.services import PermissionService
         scope = PermissionService.get_permission_scope(user, 'contacts', 'ASSIGN')
+        
+        kwargs = {}
+        if org:
+            kwargs['organization'] = org
         if scope == 'NONE':
-            return serializer.save(assigned_salesperson=user)
-        else:
-            return serializer.save()
+            kwargs['assigned_salesperson'] = user
+            
+        return serializer.save(**kwargs)
 
     def perform_update(self, serializer):
         user = self.request.user

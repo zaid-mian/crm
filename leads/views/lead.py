@@ -86,12 +86,19 @@ class LeadViewSet(
 
     def perform_create(self, serializer):
         user = self.request.user
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(user)
+        
         from roles.services import PermissionService
         scope = PermissionService.get_permission_scope(user, 'leads', 'ASSIGN')
+        
+        kwargs = {}
+        if org:
+            kwargs['organization'] = org
         if scope == 'NONE':
-            serializer.save(assigned_salesperson=user)
-        else:
-            serializer.save()
+            kwargs['assigned_salesperson'] = user
+            
+        serializer.save(**kwargs)
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, LeadListSerializer)

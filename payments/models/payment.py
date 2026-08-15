@@ -27,6 +27,7 @@ class Payment(models.Model):
     Invoice-level payment record tied to a won opportunity.
     Individual receipts are stored as PaymentTransaction rows.
     """
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
     invoice_number = models.CharField(max_length=32, unique=True, db_index=True)
     company = models.ForeignKey(
         Company,

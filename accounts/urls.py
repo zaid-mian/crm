@@ -2,7 +2,8 @@ from django.urls import path
 from .views.auth import (
     PlatformRegisterView, LoginView, MeView, LogoutView, 
     ChangePasswordView, ForgotPasswordView, 
-    PasswordResetConfirmView, PasswordResetCompleteView
+    PasswordResetConfirmView, PasswordResetCompleteView,
+    PasswordResetConfirmAPIView
 )
 from .views.admin import (
     AdminRegistrationListView, AdminRegistrationApproveView, 
@@ -20,6 +21,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='api_logout'),
     path('auth/change-password/', ChangePasswordView.as_view(), name='api_change_password'),
     path('auth/forgot-password/', ForgotPasswordView.as_view(), name='api_forgot_password'),
+    path('auth/reset-password/confirm/', PasswordResetConfirmAPIView.as_view(), name='api_password_reset_confirm'),
     path('auth/reset-password/<uidb64>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('auth/reset-password-complete/', PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 

@@ -160,13 +160,14 @@ class DashboardAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Admin should see global metrics (aggregations of both sales_user_1 and sales_user_2)
-        self.assertEqual(response.data["total_leads"], 2)
-        self.assertEqual(response.data["active_opportunities"], 1) # opp_2 is Closed Won
-        self.assertEqual(response.data["won_deals"], 1)
-        self.assertEqual(float(response.data["total_pipeline_value"]), 10000.00)
-        self.assertEqual(float(response.data["won_revenue"]), 25000.00)
-        self.assertEqual(response.data["total_companies"], 2)
-        self.assertEqual(response.data["total_contacts"], 2)
+        data = response.data["data"]
+        self.assertEqual(data["total_leads"], 2)
+        self.assertEqual(data["active_opportunities"], 1) # opp_2 is Closed Won
+        self.assertEqual(data["won_deals"], 1)
+        self.assertEqual(float(data["total_pipeline_value"]), 10000.00)
+        self.assertEqual(float(data["won_revenue"]), 25000.00)
+        self.assertEqual(data["total_companies"], 2)
+        self.assertEqual(data["total_contacts"], 2)
 
     def test_salesperson_data_scoping(self):
         # Authenticate as sales_user_1
@@ -175,13 +176,14 @@ class DashboardAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Salesperson 1 should see only their own scoped metrics
-        self.assertEqual(response.data["total_leads"], 1)
-        self.assertEqual(response.data["active_opportunities"], 1)
-        self.assertEqual(response.data["won_deals"], 0)
-        self.assertEqual(float(response.data["total_pipeline_value"]), 10000.00)
-        self.assertEqual(float(response.data["won_revenue"]), 0.00)
-        self.assertEqual(response.data["total_companies"], 1)
-        self.assertEqual(response.data["total_contacts"], 1)
+        data = response.data["data"]
+        self.assertEqual(data["total_leads"], 1)
+        self.assertEqual(data["active_opportunities"], 1)
+        self.assertEqual(data["won_deals"], 0)
+        self.assertEqual(float(data["total_pipeline_value"]), 10000.00)
+        self.assertEqual(float(data["won_revenue"]), 0.00)
+        self.assertEqual(data["total_companies"], 1)
+        self.assertEqual(data["total_contacts"], 1)
 
     def test_caching_behavior(self):
         self.client.force_authenticate(user=self.sales_user_1)
@@ -204,21 +206,22 @@ class DashboardAPITests(APITestCase):
         # Second request should return cached response (identical to first, ignoring the database mutation)
         response2 = self.client.get(self.summary_url)
         self.assertEqual(response2.status_code, status.HTTP_200_OK)
-        self.assertEqual(response2.data["total_leads"], 1) # Still cached at 1
+        self.assertEqual(response2.data["data"]["total_leads"], 1) # Still cached at 1
 
         # Clear cache and verify update
         cache.clear()
         response3 = self.client.get(self.summary_url)
-        self.assertEqual(response3.data["total_leads"], 2) # Updated to 2
+        self.assertEqual(response3.data["data"]["total_leads"], 2) # Updated to 2
 
     def test_pipeline_funnel_endpoint(self):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(self.pipeline_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(len(response.data) > 0)
+        data = response.data["data"]
+        self.assertTrue(len(data) > 0)
         
         # Verify fields in stage item
-        first_stage = response.data[0]
+        first_stage = data[0]
         self.assertIn("stage_id", first_stage)
         self.assertIn("stage_name", first_stage)
         self.assertIn("lead_count", first_stage)
@@ -230,8 +233,9 @@ class DashboardAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Recent activity should return formatted generic logs
-        self.assertTrue(len(response.data) > 0)
-        first_act = response.data[0]
+        data = response.data["data"]
+        self.assertTrue(len(data) > 0)
+        first_act = data[0]
         self.assertIn("id", first_act)
         self.assertIn("type", first_act)
         self.assertIn("timestamp", first_act)
@@ -243,13 +247,15 @@ class DashboardAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Verify followups returns active opportunities
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["entity_type"], "OPPORTUNITY")
-        self.assertEqual(response.data[0]["title"], "Target Close: Opportunity 1")
+        data = response.data["data"]
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["entity_type"], "OPPORTUNITY")
+        self.assertEqual(data[0]["title"], "Target Close: Opportunity 1")
 
     def test_charts_endpoint(self):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(self.charts_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("lead_sources", response.data)
-        self.assertIn("payment_summary", response.data)
+        data = response.data["data"]
+        self.assertIn("lead_sources", data)
+        self.assertIn("payment_summary", data)

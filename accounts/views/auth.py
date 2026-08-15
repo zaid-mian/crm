@@ -255,3 +255,41 @@ class PasswordResetConfirmView(DjangoPasswordResetConfirmView):
 
 class PasswordResetCompleteView(DjangoPasswordResetCompleteView):
     template_name = 'accounts/password_reset_complete.html'
+
+
+class PasswordResetConfirmAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from django.utils.http import urlsafe_base64_decode
+        from django.utils.encoding import force_str
+        
+        uidb64 = request.data.get("uidb64")
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        if not uidb64 or not token or not new_password or not confirm_password:
+            return api_error("All fields (uidb64, token, new_password, confirm_password) are required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != confirm_password:
+            return api_error("Passwords do not match.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return api_error("Invalid reset link parameters.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return api_error("The password reset token is invalid or has expired.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return api_error(message="Weak password.", errors={"new_password": e.messages})
+
+        user.set_password(new_password)
+        user.save()
+
+        return api_success(message="Password reset successful. You can now log in with your new password.")

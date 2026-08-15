@@ -10,6 +10,7 @@ class Contact(models.Model):
     """
     Contact model representing contact records in the CRM system.
     """
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, null=True, blank=True, related_name='contacts')
     full_name = models.CharField(max_length=255, db_index=True)
     company = models.ForeignKey(
         'companies.Company',

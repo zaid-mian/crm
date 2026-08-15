@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMS SaaS Portal - OrbitCRM JTS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="portal.css">
+    <style>
+        .grid-landing {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        @media (max-width: 900px) {
+            .grid-landing {
+                grid-template-columns: 1fr;
+            }
+        }
+        .catalog-item-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease;
+        }
+        .catalog-item-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+        }
+        .star-rating {
+            color: var(--warning);
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .reviews-list {
+            margin-top: 20px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 15px;
+        }
+        .review-item {
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Top Nav Bar -->
+        <nav class="navbar">
+            <a href="index.html" class="navbar-brand">★ BMS Portal</a>
+            <ul class="navbar-nav" id="nav-links">
+                <li><a href="index.html" class="nav-link active">Catalog</a></li>
+                <li><a href="login.html" class="nav-link">Login</a></li>
+                <li><a href="register.html" class="nav-link">Register</a></li>
+            </ul>
+        </nav>
+
+        <!-- Dynamic Landing Hub -->
+        <div id="catalog-listing-section">
+            <header>
+                <h1>Business Management System (BMS)</h1>
+                <p>Browse our scalable software solutions, modules packaging configurations, and consulting services.</p>
+            </header>
+
+            <div id="alert-box"></div>
+
+            <div class="grid-landing">
+                <!-- Products list panel -->
+                <div class="card">
+                    <h2 style="border-bottom: 2px solid var(--primary); padding-bottom: 8px;">Software Products</h2>
+                    <div id="products-list-spinner" class="spinner-container"><div class="spinner"></div></div>
+                    <div class="grid" id="products-container" style="grid-template-columns: 1fr;"></div>
+                </div>
+
+                <!-- Services list panel -->
+                <div class="card">
+                    <h2 style="border-bottom: 2px solid var(--accent); padding-bottom: 8px;">Professional Services</h2>
+                    <div id="services-list-spinner" class="spinner-container"><div class="spinner"></div></div>
+                    <div class="grid" id="services-container" style="grid-template-columns: 1fr;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Details view -->
+        <div id="catalog-detail-section" class="card" style="display: none;">
+            <button class="btn btn-secondary" onclick="showCatalogListing()">&larr; Back to Catalog</button>
+            
+            <div style="margin-top: 25px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div id="detail-title-icon" style="font-size: 32px; background: rgba(99, 102, 241, 0.1); border-radius: 12px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; color: var(--primary);">★</div>
+                <div>
+                    <h1 id="detail-name" style="color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 5px;">Item Name</h1>
+                    <div style="display: flex; gap: 12px; align-items: center; font-size: 13px;">
+                        <span id="detail-rating-average" style="color: var(--warning); font-weight: 600;">★ 0.0 / 5.0</span>
+                        <span id="detail-rating-count" style="color: var(--text-muted);">(0 reviews)</span>
+                    </div>
+                </div>
+            </div>
+
+            <p id="detail-desc" style="color: var(--text-muted); font-size: 15px; line-height: 1.6; margin: 20px 0;"></p>
+
+            <div id="detail-modules-section" style="display: none;">
+                <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 15px;">Operational Modules</h3>
+                <div class="grid" id="detail-modules-list" style="margin-bottom: 30px;"></div>
+            </div>
+
+            <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 15px;">Pricing & Subscription Packages</h3>
+            <div class="grid" id="detail-plans-list" style="margin-bottom: 30px;"></div>
+
+            <!-- Customer Reviews and Feedback section -->
+            <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 15px; border-top: 1px solid var(--glass-border); padding-top: 25px;">Customer Reviews</h3>
+            <div id="feedback-alert-box"></div>
+            
+            <div id="add-review-section" style="display: none;" class="card">
+                <h4 id="review-form-title" style="margin-bottom: 15px; font-size: 15px; color: #ffffff;">Submit Your Review</h4>
+                <form id="feedback-form">
+                    <div class="form-group">
+                        <label for="feedback-rating">Rating (1 to 5 Stars)</label>
+                        <select id="feedback-rating" class="form-control" style="max-width: 120px;" required>
+                            <option value="5" selected>★★★★★ (5)</option>
+                            <option value="4">★★★★☆ (4)</option>
+                            <option value="3">★★★☆☆ (3)</option>
+                            <option value="2">★★☆☆☆ (2)</option>
+                            <option value="1">★☆☆☆☆ (1)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedback-comment">Review Commentary</label>
+                        <textarea id="feedback-comment" class="form-control" rows="3" placeholder="Provide detailed remarks..." required></textarea>
+                    </div>
+                    <button type="submit" id="btn-submit-feedback" class="btn">Submit Review</button>
+                </form>
+            </div>
+
+            <div class="reviews-list" id="detail-reviews-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = localStorage.getItem('apiBaseUrl') || 
+            (window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8000' : 'http://localhost:8000');
+        let currentTargetType = '';
+        let currentTargetSlug = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            configureNavbar();
+            fetchCatalogLists();
+        });
+
+        function configureNavbar() {
+            const nav = document.getElementById('nav-links');
+            const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+            if (isAuthenticated) {
+                let user = {};
+                try {
+                    const storedUser = localStorage.getItem('user');
+                    if (storedUser && storedUser !== 'undefined') {
+                        user = JSON.parse(storedUser);
+                    }
+                } catch (e) {}
+
+                let adminLink = '';
+                if (user.is_staff || user.is_superuser) {
+                    adminLink = `<li><a href="admin.html" class="nav-link">Admin Area</a></li>`;
+                }
+
+                nav.innerHTML = `
+                    <li><a href="index.html" class="nav-link active">Catalog</a></li>
+                    <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                    ${adminLink}
+                    <li><a href="javascript:void(0)" onclick="handleLogout()" class="nav-link" style="color: var(--danger);">Logout</a></li>
+                `;
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch(`${API_BASE}/api/logout/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '' }
+                });
+            } catch(e) {}
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function fetchCatalogLists() {
+            // Fetch Products
+            try {
+                const response = await fetch(`${API_BASE}/api/products/`);
+                const data = await response.json();
+                document.getElementById('products-list-spinner').style.display = 'none';
+                
+                const container = document.getElementById('products-container');
+                container.innerHTML = '';
+                if (data.success && data.data.length > 0) {
+                    data.data.forEach(prod => {
+                        const div = document.createElement('div');
+                        div.className = 'card catalog-item-card';
+                        div.innerHTML = `
+                            <div>
+                                <h3 style="color:#ffffff; font-size:16px; margin-bottom:5px;">${escapeHtml(prod.name)}</h3>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${escapeHtml(prod.description)}</p>
+                            </div>
+                            <button class="btn w-100 py-1.5" onclick="fetchItemDetail('product', '${prod.slug}')">View Details &rarr;</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = `<p style="color:var(--text-muted); font-size:13px;">No active products configured.</p>`;
+                }
+            } catch (err) {
+                document.getElementById('products-list-spinner').style.display = 'none';
+                document.getElementById('products-container').innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading products.</p>`;
+            }
+
+            // Fetch Services
+            try {
+                const response = await fetch(`${API_BASE}/api/services/`);
+                const data = await response.json();
+                document.getElementById('services-list-spinner').style.display = 'none';
+                
+                const container = document.getElementById('services-container');
+                container.innerHTML = '';
+                if (data.success && data.data.length > 0) {
+                    data.data.forEach(serv => {
+                        const div = document.createElement('div');
+                        div.className = 'card catalog-item-card';
+                        div.innerHTML = `
+                            <div>
+                                <h3 style="color:#ffffff; font-size:16px; margin-bottom:5px;">${escapeHtml(serv.name)}</h3>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4; margin-bottom:12px;">${escapeHtml(serv.short_description)}</p>
+                            </div>
+                            <button class="btn btn-success w-100 py-1.5" onclick="fetchItemDetail('service', '${serv.slug}')">View Details &rarr;</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = `<p style="color:var(--text-muted); font-size:13px;">No active services configured.</p>`;
+                }
+            } catch (err) {
+                document.getElementById('services-list-spinner').style.display = 'none';
+                document.getElementById('services-container').innerHTML = `<p style="color:var(--danger); font-size:13px;">Error loading services.</p>`;
+            }
+        }
+
+        async function fetchItemDetail(type, slug) {
+            currentTargetType = type;
+            currentTargetSlug = slug;
+            document.getElementById('catalog-listing-section').style.display = 'none';
+            document.getElementById('catalog-detail-section').style.display = 'block';
+            
+            const detailName = document.getElementById('detail-name');
+            const detailDesc = document.getElementById('detail-desc');
+            const ratingAvg = document.getElementById('detail-rating-average');
+            const ratingCount = document.getElementById('detail-rating-count');
+            const modulesSection = document.getElementById('detail-modules-section');
+            const plansList = document.getElementById('detail-plans-list');
+            const reviewsContainer = document.getElementById('detail-reviews-container');
+
+            detailName.innerText = 'Loading...';
+            detailDesc.innerText = '';
+            modulesSection.style.display = 'none';
+            plansList.innerHTML = '';
+            reviewsContainer.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/${type}s/${slug}/`, {
+                    credentials: 'include'
+                });
+                const res = await response.json();
+
+                if (response.ok && res.success) {
+                    const item = res.data;
+                    detailName.innerText = item.name;
+                    detailDesc.innerText = item.description || item.full_description || item.short_description || '';
+                    ratingAvg.innerText = `★ ${parseFloat(item.average_rating || 0).toFixed(1)} / 5.0`;
+                    ratingCount.innerText = `(${item.review_count || 0} reviews)`;
+
+                    // Populate Modules (if product)
+                    if (type === 'product' && item.modules && item.modules.length > 0) {
+                        modulesSection.style.display = 'block';
+                        const modContainer = document.getElementById('detail-modules-list');
+                        modContainer.innerHTML = '';
+                        item.modules.forEach(m => {
+                            const div = document.createElement('div');
+                            div.className = 'card';
+                            div.style.padding = '15px';
+                            div.style.marginBottom = '0';
+                            div.innerHTML = `
+                                <h4 style="color:#ffffff; font-size:14px; margin-bottom:4px;">${escapeHtml(m.name)}</h4>
+                                <span class="badge badge-info" style="font-size:9px; margin-bottom:5px;">${escapeHtml(m.code)}</span>
+                                <p style="font-size:12px; color:var(--text-muted);">${escapeHtml(m.description || 'No description.')}</p>
+                            `;
+                            modContainer.appendChild(div);
+                        });
+                    }
+
+                    // Populate Pricing Plans
+                    if (item.pricing_plans && item.pricing_plans.length > 0) {
+                        item.pricing_plans.forEach(plan => {
+                            const card = document.createElement('div');
+                            card.className = 'card';
+                            card.style.marginBottom = '0';
+
+                            // Format price discount notice
+                            let priceHtml = `<span style="font-size: 24px; font-weight: 700; color: #ffffff;">$${plan.final_price}</span>`;
+                            if (plan.active_discount) {
+                                priceHtml = `
+                                    <div style="display: flex; flex-direction: column;">
+                                        <div>
+                                            <span style="font-size: 24px; font-weight: 700; color: var(--accent);">$${plan.final_price}</span>
+                                            <span style="text-decoration: line-through; font-size: 14px; color: var(--text-muted); margin-left: 8px;">$${plan.price}</span>
+                                        </div>
+                                        <span class="badge badge-warning" style="font-size: 9px; align-self: flex-start; margin-top: 4px;">Save ${plan.active_discount.value}${plan.active_discount.discount_type === 'percentage' ? '%' : ''}</span>
+                                    </div>
+                                `;
+                            }
+
+                            card.innerHTML = `
+                                <h4 style="color:#ffffff; font-size:16px; margin-bottom:10px;">${escapeHtml(plan.name)}</h4>
+                                <div style="margin-bottom:15px;">
+                                    ${priceHtml}
+                                    <span style="font-size: 12px; color:var(--text-muted);">/ ${plan.billing_cycle}</span>
+                                </div>
+                                <button class="btn w-100 py-1.5" onclick="window.location.href='register.html'">Select Package</button>
+                            `;
+                            plansList.appendChild(card);
+                        });
+                    } else {
+                        plansList.innerHTML = `<p style="color:var(--text-muted); font-size:13px;">No pricing plans listed.</p>`;
+                    }
+
+                    // Handle Add Review visibility
+                    const addReviewSection = document.getElementById('add-review-section');
+                    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+                    if (isAuthenticated && item.can_review) {
+                        addReviewSection.style.display = 'block';
+                        document.getElementById('review-form-title').innerText = item.has_reviewed ? "Update Your Review" : "Submit Your Review";
+                    } else {
+                        addReviewSection.style.display = 'none';
+                    }
+
+                    // Populate Reviews list
+                    if (item.reviews && item.reviews.length > 0) {
+                        item.reviews.forEach(rev => {
+                            const div = document.createElement('div');
+                            div.className = 'review-item';
+                            let stars = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+                            div.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <strong style="color:#ffffff; font-size:14px;">${escapeHtml(rev.user_name)}</strong>
+                                    <span style="color:var(--warning); font-size:12px;">${stars}</span>
+                                </div>
+                                <p style="font-size:13px; color:var(--text-muted); line-height:1.4;">${escapeHtml(rev.comment)}</p>
+                                <span style="font-size:10px; color:var(--text-muted); display:block; text-align:right; margin-top:5px;">${new Date(rev.updated_at).toLocaleDateString()}</span>
+                            `;
+                            reviewsContainer.appendChild(div);
+                        });
+                    } else {
+                        reviewsContainer.innerHTML = `<p style="color:var(--text-muted); font-size:13px; text-align:center;">No reviews submitted yet.</p>`;
+                    }
+                } else {
+                    detailName.innerText = 'Product Not Found';
+                }
+            } catch (err) {
+                detailName.innerText = 'Connection Failed';
+            }
+        }
+
+        // Handle review feedback submission
+        document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-feedback');
+            btn.disabled = true;
+            btn.innerText = 'Submitting...';
+
+            const rating = document.getElementById('feedback-rating').value;
+            const comment = document.getElementById('feedback-comment').value.trim();
+            const alertBox = document.getElementById('feedback-alert-box');
+            alertBox.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/${currentTargetType}s/${currentTargetSlug}/feedback/`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || ''
+                    },
+                    body: JSON.stringify({ rating: rating, comment: comment })
+                });
+
+                const data = await response.json();
+                btn.disabled = false;
+                btn.innerText = 'Submit Review';
+
+                if (response.ok) {
+                    alertBox.innerHTML = `<div class="alert alert-success">Feedback recorded successfully! Reloading details...</div>`;
+                    setTimeout(() => {
+                        fetchItemDetail(currentTargetType, currentTargetSlug);
+                    }, 800);
+                } else {
+                    alertBox.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to record feedback.'}</div>`;
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = 'Submit Review';
+                alertBox.innerHTML = `<div class="alert alert-danger">Network Error: Failed to post review.</div>`;
+            }
+        });
+
+        function showCatalogListing() {
+            document.getElementById('catalog-listing-section').style.display = 'block';
+            document.getElementById('catalog-detail-section').style.display = 'none';
+            fetchCatalogLists();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

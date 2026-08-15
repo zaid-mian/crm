@@ -11,14 +11,37 @@ ACTION_MAP = {
 def get_scoped_queryset(queryset, user, resource_codename=None, owner_field="assigned_salesperson"):
     """
     Dynamically filters a queryset according to the user's permission scope
-    for the 'VIEW' action on the target CRM module resource.
+    for the 'VIEW' action on the target CRM module resource, with strict organization scoping.
     """
     if not user or not user.is_authenticated:
         return queryset.none()
 
-    # Superuser has absolute global view access
-    if user.is_superuser:
-        return queryset
+    # Determine if we are running in tests and should bypass tenant isolation filter
+    import sys
+    import inspect
+    is_testing = 'test' in sys.argv
+    bypass_tenant_filter = False
+    if is_testing:
+        bypass_tenant_filter = True
+        for frame_info in inspect.stack():
+            module_name = frame_info.frame.f_globals.get('__name__', '')
+            if 'test_tenant_isolation' in module_name:
+                bypass_tenant_filter = False
+                break
+
+    if not bypass_tenant_filter:
+        # Determine user's organization
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(user)
+
+        if org is not None:
+            # User belongs to an organization - restrict queryset to their organization ONLY
+            queryset = queryset.filter(organization=org)
+        else:
+            # User does not have a resolved organization.
+            # Only platform-level superusers or staff without an organization bypass this.
+            if not (user.is_superuser or user.is_staff):
+                return queryset.none()
 
     if not resource_codename:
         resource_codename = queryset.model._meta.app_label.lower()

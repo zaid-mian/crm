@@ -33,8 +33,10 @@ class CompanyListSerializer(serializers.ModelSerializer):
             'email',
             'phone',
             'assigned_salesperson_name',
+            'organization',
             'created_at'
         ]
+        read_only_fields = ['id', 'company_code', 'organization']
 
 
 class CompanyDetailSerializer(serializers.ModelSerializer):
@@ -65,12 +67,14 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
             'parent_company',
             'assigned_salesperson',
             'assigned_salesperson_name',
+            'organization',
             'created_at',
             'updated_at',
             'summary',
             'contacts',
             'opportunities'
         ]
+        read_only_fields = ['id', 'company_code', 'organization']
 
     def get_summary(self, obj):
         from opportunities.models import OpportunityStage
@@ -114,8 +118,9 @@ class CompanyCreateUpdateSerializer(serializers.ModelSerializer):
             'description',
             'parent_company',
             'assigned_salesperson',
+            'organization',
         ]
-        read_only_fields = ['id', 'company_code']
+        read_only_fields = ['id', 'company_code', 'organization']
 
     def validate_name(self, value):
         if not value or not value.strip():
