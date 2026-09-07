@@ -4,6 +4,13 @@ from django.conf import settings
 class Organization(models.Model):
     name = models.CharField(max_length=255)
     logo = models.ImageField(upload_to='logos/', blank=True, null=True)
+    plan = models.ForeignKey(
+        'catalog.PricingPlan',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='organizations'
+    )
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

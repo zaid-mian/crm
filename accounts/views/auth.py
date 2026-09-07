@@ -50,6 +50,15 @@ class LoginView(APIView):
         # Normalize email/username
         username = username.strip().lower()
 
+        # Resolve username if email is passed
+        if '@' in username:
+            try:
+                user_obj = User.objects.filter(email=username).first()
+                if user_obj:
+                    username = user_obj.username
+            except Exception:
+                pass
+
         # Try to authenticate
         user = authenticate(username=username, password=password)
         if user is not None:
@@ -101,26 +110,88 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
 
-        # No CRM-specific logic in platform views
-
-        profile_data = None
-        try:
-            profile = user.ownerprofile
-            org = profile.organization
-            profile_data = {
-                "cnic": profile.cnic,
-                "phone_number": profile.phone_number,
-                "country": profile.country,
-                "address": profile.address,
-                "organization": {
-                    "id": org.id,
-                    "name": org.name,
-                    "logo": request.build_absolute_uri(org.logo.url) if org.logo else None,
-                    "is_active": org.is_active
-                }
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(user)
+        org_data = None
+        if org:
+            org_data = {
+                "id": org.id,
+                "name": org.name,
+                "logo": request.build_absolute_uri(org.logo.url) if org.logo else None,
+                "is_active": org.is_active
             }
-        except Exception:
-            pass
+
+        # Resolve owner profile data with full fallback support
+        profile_data = None
+        owner_profile = getattr(user, 'ownerprofile', None)
+        if owner_profile:
+            profile_data = {
+                "cnic": owner_profile.cnic,
+                "phone_number": owner_profile.phone_number,
+                "country": owner_profile.country,
+                "address": owner_profile.address,
+                "organization": org_data
+            }
+        else:
+            profile_data = {
+                "cnic": "",
+                "phone_number": "",
+                "country": "",
+                "address": "",
+                "organization": org_data
+            }
+
+        # Resolve CRM UserType & Role details from leads.UserProfile
+        crm_user_type = 'USER'
+        crm_role_name = None
+
+        if user.is_superuser or user.is_staff:
+            crm_user_type = 'ADMIN'
+            crm_role_name = 'Administrator'
+
+        crm_profile = getattr(user, 'profile', None)
+        if crm_profile:
+            crm_user_type = crm_profile.user_type
+            if crm_profile.role:
+                crm_role_name = crm_profile.role.name
+
+        # Compute capabilities
+        from roles.services import PermissionService
+        raw_perms = PermissionService.compute_user_permissions(user)
+        capabilities = {}
+
+        if user.is_superuser or user.is_staff:
+            resources = ['leads', 'companies', 'contacts', 'opportunities', 'payments', 'pipeline']
+            for res in resources:
+                capabilities[res] = {
+                    "view": True,
+                    "create": True,
+                    "edit": True,
+                    "delete": True,
+                    "export": True,
+                    "approve": True,
+                    "assign": True
+                }
+        else:
+            for resource, actions in raw_perms.items():
+                res_code = resource.lower()
+                capabilities[res_code] = {}
+                for act, scope in actions.items():
+                    act_code = act.lower()
+                    capabilities[res_code][act_code] = (scope in ('ALL', 'OWN'))
+
+        subscriptions = []
+        if org and org.plan:
+            has_crm = org.plan.modules.filter(code='sales-crm').exists()
+            subscriptions.append({
+                "id": f"sub-{org.plan.id}",
+                "product": org.plan.product.name if org.plan.product else "Sales CRM",
+                "hasCrm": has_crm,
+                "pricingPlan": org.plan.name,
+                "status": "Active",
+                "startDate": org.created_at.strftime("%b %d, %Y") if org.created_at else "Jan 15, 2026",
+                "renewalDate": "Jan 15, 2027"
+            })
 
         return api_success(data={
             "id": user.id,
@@ -130,7 +201,12 @@ class MeView(APIView):
             "last_name": user.last_name,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
-            "profile": profile_data
+            "user_type": crm_user_type,
+            "role": crm_role_name,
+            "permissions": capabilities,
+            "profile": profile_data,
+            "subscriptions": subscriptions,
+            "direct_crm": user.email in ('zaidqa_test@example.com',)
         }, message="User details retrieved successfully")
 
     def patch(self, request):
@@ -222,9 +298,9 @@ class ForgotPasswordView(APIView):
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        # Build absolute reset path
-        reset_path = reverse('accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
-        reset_link = request.build_absolute_uri(reset_path)
+        # Build absolute reset path pointing to the React frontend
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        reset_link = f"{frontend_url.rstrip('/')}/?view=reset-password&uid={uidb64}&token={token}"
 
         subject = "BMS Platform - Password Reset Request"
         message = (

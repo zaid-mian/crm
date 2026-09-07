@@ -95,7 +95,7 @@ class LeadViewSet(
         kwargs = {}
         if org:
             kwargs['organization'] = org
-        if scope == 'NONE':
+        if scope == 'NONE' or not serializer.validated_data.get('assigned_salesperson'):
             kwargs['assigned_salesperson'] = user
             
         serializer.save(**kwargs)
@@ -170,7 +170,7 @@ class LeadViewSet(
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
         lead = self.get_object()
-        serializer = LeadAssignSerializer(data=request.data)
+        serializer = LeadAssignSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         
         salesperson = serializer.validated_data['assigned_salesperson']

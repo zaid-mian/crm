@@ -4,7 +4,10 @@ from dashboard.views import (
     PipelineFunnelView,
     RecentActivityView,
     UpcomingFollowupsView,
-    ChartDataView
+    ChartDataView,
+    UserPerformanceReportView,
+    UserPerformancePDFView,
+    LeaderboardView
 )
 
 app_name = 'dashboard'
@@ -15,4 +18,8 @@ urlpatterns = [
     path('dashboard/activity/', RecentActivityView.as_view(), name='dashboard-activity'),
     path('dashboard/followups/', UpcomingFollowupsView.as_view(), name='dashboard-followups'),
     path('dashboard/charts/', ChartDataView.as_view(), name='dashboard-charts'),
+    path('dashboard/leaderboard/', LeaderboardView.as_view(), name='dashboard-leaderboard'),
+    path('reports/user-performance/pdf/', UserPerformancePDFView.as_view(), name='user-performance-pdf'),
+    path('reports/user-performance/', UserPerformanceReportView.as_view(), name='user-performance-report'),
+    path('dashboard/user-reporting/', UserPerformanceReportView.as_view(), name='dashboard-user-reporting'),
 ]

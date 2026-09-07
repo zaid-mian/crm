@@ -70,6 +70,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             'pipeline',
             'pipeline_stage',
             'priority',
+            'custom_values',
             'organization',
             'created_at',
             'updated_at',
@@ -111,6 +112,7 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
             'lost_reason',
             'pipeline',
             'pipeline_stage',
+            'custom_values',
             'organization',
         ]
         read_only_fields = [
@@ -132,7 +134,13 @@ class OpportunityUpdateSerializer(serializers.ModelSerializer):
         stage = attrs.get('stage')
         pipeline_stage = attrs.get('pipeline_stage')
         lost_reason = attrs.get('lost_reason')
-        user = self.context['request'].user
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            # Validate assignment scope
+            if 'assigned_salesperson' in attrs:
+                from roles.permissions import validate_assignment
+                validate_assignment(user, 'opportunities', attrs.get('assigned_salesperson'))
         
         # Enforce amount non-negative
         amount = attrs.get('amount')

@@ -8,10 +8,23 @@ class CRMResourceSerializer(serializers.ModelSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    assigned_users = serializers.SerializerMethodField()
+
     class Meta:
         model = Role
-        fields = ['id', 'name', 'description', 'is_system', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'is_system', 'created_at', 'updated_at', 'assigned_users']
         read_only_fields = ['is_system', 'created_at', 'updated_at']
+
+    def get_assigned_users(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user:
+            return 0
+        from leads.utils.tenant import get_user_organization
+        org = get_user_organization(request.user)
+        qs = obj.profiles.all()
+        if org:
+            qs = qs.filter(organization=org)
+        return qs.count()
 
     def validate_name(self, value):
         # Case-insensitive uniqueness check

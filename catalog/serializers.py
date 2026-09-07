@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
-        fields = ['id', 'product', 'name', 'code', 'description', 'is_active', 'display_order']
+        fields = ['id', 'product', 'name', 'code', 'description', 'is_active', 'display_order', 'created_at']
 
     def validate(self, attrs):
         instance = self.instance or Module()
@@ -30,7 +30,7 @@ class ServiceFeatureSerializer(serializers.ModelSerializer):
 class DiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
-        fields = ['id', 'name', 'discount_type', 'value', 'is_active', 'start_date', 'end_date']
+        fields = ['id', 'pricing_plan', 'name', 'discount_type', 'value', 'is_active', 'start_date', 'end_date']
 
     def validate(self, attrs):
         instance = self.instance or Discount()
@@ -51,7 +51,7 @@ class PricingPlanSerializer(serializers.ModelSerializer):
         model = PricingPlan
         fields = [
             'id', 'product', 'service', 'name', 'price', 'final_price', 'currency', 
-            'billing_cycle', 'is_active', 'display_order', 'active_discount'
+            'billing_cycle', 'is_active', 'display_order', 'active_discount', 'created_at'
         ]
 
     def get_active_discount(self, obj):
@@ -90,7 +90,7 @@ class PlanModuleSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id', 'name', 'slug', 'description', 'image', 'is_active', 'display_order']
+        fields = ['id', 'name', 'slug', 'description', 'image', 'is_active', 'display_order', 'created_at']
 
     def validate(self, attrs):
         instance = self.instance or Product()

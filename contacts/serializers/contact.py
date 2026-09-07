@@ -126,6 +126,15 @@ class ContactCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'contact_code', 'organization']
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            assigned_salesperson = attrs.get('assigned_salesperson')
+            from roles.permissions import validate_assignment
+            validate_assignment(user, 'contacts', assigned_salesperson)
+        return attrs
+
     def validate_phone_number(self, value):
         if value and Contact.objects.filter(phone_number=value, is_deleted=False).exists():
             raise serializers.ValidationError("A contact with this phone number already exists.")
@@ -161,6 +170,15 @@ class ContactUpdateSerializer(serializers.ModelSerializer):
             'organization',
         ]
         read_only_fields = ['id', 'contact_code', 'organization']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            assigned_salesperson = attrs.get('assigned_salesperson')
+            from roles.permissions import validate_assignment
+            validate_assignment(user, 'contacts', assigned_salesperson)
+        return attrs
 
     def validate_phone_number(self, value):
         if not value:

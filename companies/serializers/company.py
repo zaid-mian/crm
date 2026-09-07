@@ -122,6 +122,15 @@ class CompanyCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'company_code', 'organization']
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            assigned_salesperson = attrs.get('assigned_salesperson')
+            from roles.permissions import validate_assignment
+            validate_assignment(user, 'companies', assigned_salesperson)
+        return attrs
+
     def validate_name(self, value):
         if not value or not value.strip():
             raise serializers.ValidationError("Company name is required.")

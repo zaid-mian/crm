@@ -435,8 +435,12 @@ class PipelineViewSetTestCase(APITestCase):
             "pipeline": pipeline_b.id
         }
         response = self.client.patch(lead_url, data=payload)
+
+        print("Status:", response.status_code)
+        print("Response:", response.data)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+                
         self.lead_a.refresh_from_db()
         self.assertEqual(self.lead_a.pipeline, pipeline_b)
         self.assertEqual(self.lead_a.pipeline_stage, stage_b_1) # reset to first compatible stage
@@ -477,7 +481,7 @@ class PipelineViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Target stage does not belong to the lead's active pipeline.", response.data["message"])
 
-    def test_configure_behavior_inference(self):
+    def test_configure_behavior_inference(self ):
         """Verify configure_behavior API endpoint correctly computes and maps behaviors."""
         from pipeline.models import Pipeline, PipelineStage
         self.client.force_authenticate(user=self.admin)

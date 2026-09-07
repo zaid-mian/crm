@@ -149,6 +149,13 @@ class LeadCreateSerializer(serializers.ModelSerializer):
         attrs['pipeline'] = pipeline
         attrs['pipeline_stage'] = first_stage
 
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            assigned_salesperson = attrs.get('assigned_salesperson')
+            from roles.permissions import validate_assignment
+            validate_assignment(user, 'leads', assigned_salesperson)
+
         return attrs
 
     def create(self, validated_data):
@@ -289,6 +296,15 @@ class LeadAssignSerializer(serializers.Serializer):
             'does_not_exist': 'The selected salesperson does not exist.'
         }
     )
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            assigned_salesperson = attrs.get('assigned_salesperson')
+            from roles.permissions import validate_assignment
+            validate_assignment(user, 'leads', assigned_salesperson)
+        return attrs
 
 
 class LeadLostSerializer(serializers.Serializer):

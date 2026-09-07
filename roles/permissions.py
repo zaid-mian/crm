@@ -142,3 +142,28 @@ class DynamicCRMPermission(permissions.BasePermission):
             return False
 
         return False
+
+
+def validate_assignment(user, resource_codename, target_salesperson):
+    """
+    Validates target assignee based on user's ASSIGN permission scope.
+    If scope is 'OWN', target_salesperson must be the user themselves.
+    """
+    if not user or user.is_superuser or user.is_staff:
+        return
+
+    # Bypass for CRM admins
+    from leads.models import UserProfile
+    crm_profile = getattr(user, 'profile', None)
+    if crm_profile and crm_profile.user_type == 'ADMIN':
+        return
+
+    from roles.services import PermissionService
+    scope = PermissionService.get_permission_scope(user, resource_codename, 'ASSIGN')
+
+    from rest_framework import serializers
+    if scope == 'OWN':
+        if target_salesperson and target_salesperson != user:
+            raise serializers.ValidationError("Salespeople can only assign records to themselves.")
+
+

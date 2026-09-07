@@ -23,14 +23,14 @@ def get_user_organization(user):
         # So we can check if they have a resolved organization. If they do, they are scoped to that organization even if is_staff is True!
         pass
 
-    # Try ownerprofile
-    owner_profile = getattr(user, 'ownerprofile', None)
-    if owner_profile:
-        return owner_profile.organization
-        
     # Try user profile
     profile = getattr(user, 'profile', None)
     if profile and profile.organization:
         return profile.organization
+
+    # Try ownerprofile
+    owner_profile = getattr(user, 'ownerprofile', None)
+    if owner_profile:
+        return owner_profile.organization
         
     return None

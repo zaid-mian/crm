@@ -46,10 +46,22 @@ class PlatformSignupSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
     country = serializers.CharField(max_length=100)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    plan_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_email(self, value):
         email = value.strip().lower()
-        if User.objects.filter(username=email).exists() or User.objects.filter(email=email).exists():
+        user_exists = User.objects.filter(username=email).exists() or User.objects.filter(email=email).exists()
+        if user_exists:
+            try:
+                user_obj = User.objects.get(email=email)
+            except User.DoesNotExist:
+                user_obj = User.objects.get(username=email)
+            
+            profile = getattr(user_obj, 'ownerprofile', None)
+            if profile:
+                reg_req = RegistrationRequest.objects.filter(owner_profile=profile).first()
+                if reg_req and reg_req.status == 'rejected':
+                    return email
             raise serializers.ValidationError("A user with this email address already exists.")
         return email
 
@@ -80,35 +92,82 @@ class PlatformSignupSerializer(serializers.Serializer):
         phone_number = validated_data['phone_number']
         country = validated_data['country']
         address = validated_data.get('address', '')
+        plan_id = validated_data.get('plan_id')
+
+        plan = None
+        if plan_id:
+            from catalog.models import PricingPlan
+            try:
+                plan = PricingPlan.objects.get(pk=plan_id)
+            except PricingPlan.DoesNotExist:
+                pass
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(username=email)
+            except User.DoesNotExist:
+                user = None
 
         with transaction.atomic():
-            # Create user (inactive until registration request is approved)
-            user = User.objects.create_user(
-                username=email,
-                email=email,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                is_active=False
-            )
-            # Create inactive organization
-            org = Organization.objects.create(
-                name=company_name,
-                is_active=False
-            )
-            # Create owner profile
-            profile = OwnerProfile.objects.create(
-                user=user,
-                organization=org,
-                cnic=cnic,
-                phone_number=phone_number,
-                country=country,
-                address=address
-            )
-            # Create registration request
-            RegistrationRequest.objects.create(
-                owner_profile=profile,
-                status='pending'
-            )
+            if user:
+                # Update existing user details
+                user.set_password(password)
+                user.first_name = first_name
+                user.last_name = last_name
+                user.is_active = False
+                user.save()
+
+                # Get existing profile and organization
+                profile = user.ownerprofile
+                org = profile.organization
+
+                # Update organization
+                org.name = company_name
+                org.plan = plan
+                org.is_active = False
+                org.save()
+
+                # Update owner profile
+                profile.cnic = cnic
+                profile.phone_number = phone_number
+                profile.country = country
+                profile.address = address
+                profile.save()
+
+                # Update registration request to reset status and clear rejection reason
+                reg_req = RegistrationRequest.objects.get(owner_profile=profile)
+                reg_req.status = 'pending'
+                reg_req.rejection_reason = None
+                reg_req.reviewed_at = None
+                reg_req.save()
+            else:
+                # Create new records
+                user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    is_active=False
+                )
+                org = Organization.objects.create(
+                    name=company_name,
+                    plan=plan,
+                    is_active=False
+                )
+                profile = OwnerProfile.objects.create(
+                    user=user,
+                    organization=org,
+                    cnic=cnic,
+                    phone_number=phone_number,
+                    country=country,
+                    address=address
+                )
+                RegistrationRequest.objects.create(
+                    owner_profile=profile,
+                    status='pending'
+                )
 
         return profile
