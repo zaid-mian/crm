@@ -11,10 +11,10 @@ AdaptCRM is an enterprise-grade, multi-tenant Customer Relationship Management (
 ---
 
 ## 📑 Table of Contents
-- [1. System Architecture Diagrams](#1-system-architecture-diagrams)
-  - [Complete Platform Ecosystem Architecture](#11-complete-platform-ecosystem-architecture)
-  - [CRM Sales Pipeline Architecture](#12-crm-sales-pipeline-architecture)
-  - [Standalone Commercial Billing Engine Architecture](#13-standalone-commercial-billing-engine-architecture)
+- [1. Master System Architecture Diagrams](#1-master-system-architecture-diagrams)
+  - [1.1 Complete Platform Ecosystem Architecture](#11-complete-platform-ecosystem-architecture)
+  - [1.2 CRM Sales Pipeline & Deal Conversion Architecture](#12-crm-sales-pipeline--deal-conversion-architecture)
+  - [1.3 Standalone Commercial Billing Engine Architecture](#13-standalone-commercial-billing-engine-architecture)
 - [2. Core Platform Capabilities](#2-core-platform-capabilities)
 - [3. Application Modules & Architecture](#3-application-modules--architecture)
 - [4. Centralized Dynamic RBAC & 5 Granular Billing Resources](#4-centralized-dynamic-rbac--5-granular-billing-resources)
@@ -25,188 +25,152 @@ AdaptCRM is an enterprise-grade, multi-tenant Customer Relationship Management (
 
 ---
 
-## 1. System Architecture Diagrams
+## 1. Master System Architecture Diagrams
 
 ### 1.1 Complete Platform Ecosystem Architecture
 This diagram illustrates the full ecosystem uniting **Multi-Tenant Foundation & RBAC**, the **JTS Service Portal**, the **CRM Sales Pipeline**, and the **Standalone Commercial Billing Engine**:
 
 ```mermaid
 flowchart TD
-    %% ==========================================
-    %% 1. MULTI-TENANT IDENTITY & SECURITY FOUNDATION
-    %% ==========================================
-    subgraph CoreFoundation ["🛡️ 1. MULTI-TENANT IDENTITY, AUTH & RBAC FOUNDATION"]
-        TENANT["🏢 Multi-Tenant Isolation Engine (accounts.Organization)<br/>Data strictly isolated per tenant organization"]
-        RBAC["🔐 Centralized Dynamic RBAC (roles App)<br/>• 3-Tier Scope Control (ALL / OWN / NONE) &bull; Dynamic Custom Resources<br/>• 5 Independent Billing Resources (Analytics, Customers, Subs, Invoices, Payments)"]
-        IDENTITY["👥 Unified Identity & User Routing<br/>• CRM Admin &bull; Salesperson / Manager &bull; JTS Organization Owner &bull; Client"]
+    %% Section 1: Governance & Security
+    subgraph S1 ["1. MULTI-TENANT & SECURITY FOUNDATION"]
+        TENANT["Organization Tenant Isolation<br/>(Strict Multi-Tenancy per Organization)"]
+        RBAC["Centralized Dynamic RBAC<br/>(3-Tier Scopes: ALL / OWN / NONE & 5 Billing Resources)"]
+        AUTH["Unified Authentication & Session Router<br/>(JWT Auth, Direct CRM vs JTS Identity)"]
     end
 
-    %% ==========================================
-    %% 2. JTS (JOB TRACKING SYSTEM) & SERVICE PORTAL
-    %% ==========================================
-    subgraph JtsDomain ["🛠️ 2. JTS CLIENT PORTAL & JOB TRACKING"]
-        direction TB
-        JTS_PUB["🌐 Public Catalog & Registration<br/><small>Landing, Service Details, CNIC/Org Verification</small>"]
-        JTS_USER["📋 Client Portal (User Dashboard)<br/><small>Service Applications, Document Uploads, Job Tracking</small>"]
-        JTS_ADMIN["⚙️ JTS Admin Operations<br/><small>Application Review, Job Fulfillment, Catalog Admin</small>"]
+    %% Section 2: JTS Client Platform
+    subgraph S2 ["2. JTS CLIENT PORTAL & JOB TRACKING"]
+        JTS_PUB["Public Catalog & Landing<br/>(Service Details & Online Registration)"]
+        JTS_USER["Client Portal (User Dashboard)<br/>(Service Applications & Document Uploads)"]
+        JTS_ADMIN["JTS Admin Fulfillment<br/>(Application Review & Job Operations)"]
         JTS_PUB --> JTS_USER
         JTS_USER <--> JTS_ADMIN
     end
 
-    %% ==========================================
-    %% 3. CRM SALES & RELATIONSHIP ENGINE
-    %% ==========================================
-    subgraph CrmDomain ["🎯 3. CRM SALES & PIPELINE LIFECYCLE"]
-        direction TB
-        CATALOG["📦 Product & Service Catalog<br/><small>Catalog SKUs, Pricing, Tiers, Add-ons</small>"]
-        LEAD["1️⃣ Leads Module<br/><small>Inbound Prospect Capture & Outreach</small>"]
-        PIPE["2️⃣ Pipeline Engine<br/><small>Standard vs Custom Kanban Stages</small>"]
-        
-        subgraph ConvertedTriad ["🗂️ Auto-Linked Business Profiles"]
-            COMP["🏢 Companies"]
-            CONT["👤 Contacts"]
-            OPP["💼 Opportunities"]
-        end
-
-        WON["3️⃣ Closed Won Deal<br/><small>Sales Target Reached</small>"]
-
-        LEAD --> PIPE
-        PIPE ==>|Drop in Confirm Stage| ConvertedTriad
-        CATALOG -.->|Price & Items| OPP
-        ConvertedTriad ==>|Proposal ➔ Negotiation| WON
+    %% Section 3: CRM Sales Pipeline
+    subgraph S3 ["3. CRM SALES & RELATIONSHIP ENGINE"]
+        LEADS["Inbound Leads Engine<br/>(Website, Campaigns, Direct Outreach)"]
+        PIPE["Dynamic Kanban Pipeline<br/>(Standard & Custom Pipelines)"]
+        TRIAD["Auto-Linked Business Profiles<br/>(Company, Contact, Opportunity)"]
+        WON["Closed Won Opportunity<br/>(Deal Terms & Scope Finalized)"]
+        LEADS --> PIPE
+        PIPE -->|Qualify & Convert| TRIAD
+        TRIAD -->|Negotiation & Closing| WON
     end
 
-    %% ==========================================
-    %% 4. STANDALONE BILLING & SUBSCRIPTION SYSTEM
-    %% ==========================================
-    subgraph BillingDomain ["💳 4. STANDALONE COMMERCIAL BILLING ENGINE"]
-        direction TB
-        BCUST["4️⃣ Billing Customer<br/><small>Currency, Tax ID, Billing Address, Wallet</small>"]
-        BSUB["5️⃣ Subscription Agreement<br/><small>Snapshot Pricing, Auto-Renew, Terms</small>"]
-        BINV["6️⃣ Invoices & PDF<br/><small>Immutable Posted Bills, Line Items</small>"]
-        BPAY["7️⃣ Payments & Allocations<br/><small>Decoupled Cash, Double-Entry Allocations</small>"]
-        
-        subgraph BillingSafeguards ["🛡️ Financial Safeguards & Lifecycle"]
-            DUN["⚠️ Dunning Engine (Retries: Day 3/7/14)"]
-            ADJ["📝 Credit / Debit Notes (Adjustments)"]
-            ENT["🔑 Entitlements Engine (Feature Gating)"]
-        end
-
-        BCUST ==>|Signs Agreement| BSUB
-        BSUB ==>|Periodic Billing Run| BINV
-        BINV ==>|Settled via| BPAY
-        BINV -.->|Failed Card| DUN
-        DUN -.->|Recovers| BPAY
-        BINV -.->|Refund/Overcharge| ADJ
-        BSUB -.->|Gives Access| ENT
+    %% Section 4: Standalone Billing Engine
+    subgraph S4 ["4. STANDALONE COMMERCIAL BILLING ENGINE"]
+        BCUST["Billing Customer Account<br/>(Currency, Tax ID, Wallet Balance)"]
+        BSUB["Subscription Agreement<br/>(Locked Pricing Snapshot & Terms)"]
+        BINV["Immutable Posted Invoice<br/>(Sequential INV Number & PDF)"]
+        BPAY["Payments Ledger & Allocations<br/>(Decoupled Cash & Settle to PAID)"]
+        SAFE["Safeguards: Dunning & Adjustments<br/>(Retries: Day 3/7/14 & Credit Notes)"]
+        BCUST --> BSUB
+        BSUB -->|Billing Cycle| BINV
+        BINV -->|Settlement| BPAY
+        BINV -.->|Payment Recovery| SAFE
+        SAFE -.->|Recovered Funds| BPAY
     end
 
-    %% ==========================================
-    %% 5. POST-SALES & CUSTOMER SUCCESS
-    %% ==========================================
-    subgraph SupportDomain ["🎧 5. POST-SALES SUPPORT & RETENTION"]
-        SUPP["🎫 Support Ticketing System<br/><small>Client Inquiries, SLA Management, Issue Resolution</small>"]
+    %% Section 5: Support & Executive Intelligence
+    subgraph S5 ["5. POST-SALES SUPPORT & EXECUTIVE INTELLIGENCE"]
+        SUPP["Support Ticketing System<br/>(Client Inquiries & SLA Resolution)"]
+        UREP["Sales User Reporting<br/>(Rep Productivity & Win Rates)"]
+        BREP["Revenue Analytics Dashboard<br/>(Live MRR, ARR & Waterfall Growth)"]
     end
 
-    %% ==========================================
-    %% 6. EXECUTIVE ANALYTICS & INTELLIGENCE
-    %% ==========================================
-    subgraph AnalyticsDomain ["📊 6. EXECUTIVE ANALYTICS & REPORTING"]
-        DASH["📈 CRM Sales Dashboard & Leaderboards"]
-        UREP["👥 User Performance & Rep Win Rates"]
-        BREP["💰 Revenue Analytics & MRR Movement Waterfall"]
-    end
+    %% Inter-System Bridges
+    TENANT --> S2
+    RBAC --> S3
+    RBAC --> S4
+    AUTH --> S5
+    
+    JTS_USER -.->|Service Inquiries| LEADS
+    WON ==>|Convert to Subscription| BCUST
+    TRIAD -.->|Ongoing Relationship| SUPP
+    S3 -.->|Sales Data| UREP
+    S4 -.->|Financial Ledger| BREP
 
-    %% Cross-Domain Bridges
-    CoreFoundation ==>|Enforces Isolation & RBAC| JtsDomain
-    CoreFoundation ==>|Enforces Isolation & RBAC| CrmDomain
-    CoreFoundation ==>|Enforces Isolation & RBAC| BillingDomain
-    CoreFoundation ==>|Enforces Isolation & RBAC| SupportDomain
-    CoreFoundation ==>|Enforces Isolation & RBAC| AnalyticsDomain
+    %% Styling
+    classDef darkBox fill:#0f172a,stroke:#6366f1,stroke-width:2px,color:#ffffff;
+    classDef jtsBox fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef crmBox fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
+    classDef billBox fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#581c87;
+    classDef intelBox fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
 
-    JtsDomain <==|Service Inquiries| CrmDomain
-    WON ==>|💳 Convert to Subscription| BCUST
-    COMP -.->|Linked Account| SUPP
-    BSUB -.->|Account Standing| SUPP
-
-    CrmDomain -.->|Deals & Funnel| DASH
-    CrmDomain -.->|Rep Productivity| UREP
-    BillingDomain -.->|MRR, ARR, Cash| BREP
-
-    classDef foundationStyle fill:#0f172a,stroke:#6366f1,stroke-width:2px,color:#ffffff;
-    classDef jtsStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef crmStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
-    classDef billingStyle fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#581c87;
-    classDef financeStyle fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef supportStyle fill:#fff1f2,stroke:#f43f5e,stroke-width:2px,color:#881337;
-    classDef analyticsStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
-
-    class CoreFoundation,TENANT,RBAC,IDENTITY foundationStyle;
-    class JtsDomain,JTS_PUB,JTS_USER,JTS_ADMIN jtsStyle;
-    class CrmDomain,CATALOG,LEAD,PIPE,COMP,CONT,OPP,WON crmStyle;
-    class BillingDomain,BCUST,BSUB,BillingSafeguards,DUN,ADJ,ENT billingStyle;
-    class BINV,BPAY financeStyle;
-    class SupportDomain,SUPP supportStyle;
-    class AnalyticsDomain,DASH,UREP,BREP analyticsStyle;
+    class S1,TENANT,RBAC,AUTH darkBox;
+    class S2,JTS_PUB,JTS_USER,JTS_ADMIN jtsBox;
+    class S3,LEADS,PIPE,TRIAD,WON crmBox;
+    class S4,BCUST,BSUB,BINV,BPAY,SAFE billBox;
+    class S5,SUPP,UREP,BREP intelBox;
 ```
 
 ---
 
-### 1.2 CRM Sales Pipeline Architecture
+### 1.2 CRM Sales Pipeline & Deal Conversion Architecture
 This diagram outlines the complete front-office sales workflow from inbound prospect ingestion through Kanban deal qualification and automatic record linking:
 
 ```mermaid
-flowchart LR
-    subgraph Ingestion ["1️⃣ Inbound Intake"]
-        L_WEB["Website Inquiry"]
-        L_MAN["Manual Entry"]
-        L_REF["Partner Referral"]
+flowchart TD
+    subgraph Ingestion ["1. INBOUND INTAKE CHANNELS"]
+        IN_WEB["Website Forms"]
+        IN_CAMP["Marketing Campaigns"]
+        IN_DIR["Direct Sales Outreach"]
     end
 
-    subgraph LeadsModule ["2️⃣ Lead Qualification"]
-        LEAD["Leads Engine<br/>• Priority (High/Med/Low)<br/>• Assigned Salesperson<br/>• Standard / Custom Pipeline"]
+    subgraph LeadsModule ["2. LEADS MANAGEMENT & QUALIFICATION"]
+        LEAD_REC["Lead Record<br/>• Contact Info & Company Name<br/>• Priority (High / Medium / Low)<br/>• Assigned Sales Representative"]
+        LEAD_DRAWER["Lead Details Drawer<br/>• 360-Degree Contact View<br/>• Activity & Timeline History"]
     end
 
-    subgraph PipelineEngine ["3️⃣ Pipeline Kanban Board"]
-        ST_NEW["New"]
-        ST_CONT["Contacted"]
-        ST_CONF["Confirm / Qualify"]
+    subgraph PipelineEngine ["3. PIPELINE KANBAN ENGINE"]
+        PIPE_SEL["Pipeline Selector<br/>(Standard Default vs Custom Configured Pipelines)"]
+        ST_NEW["Stage 1: New<br/>(Initial Inbound)"]
+        ST_CONT["Stage 2: Contacted<br/>(Outreach Initiated)"]
+        ST_CONF["Stage 3: Confirm<br/>(Requirements Gathered)"]
     end
 
-    subgraph ConversionModal ["4️⃣ Auto-Link Conversion Engine"]
-        MODAL["Unified Conversion Modal<br/>Auto-provisions linked triad:"]
-        COMP["🏢 Company Profile"]
-        CONT["👤 Contact Profile"]
-        OPP["💼 Opportunity Deal"]
+    subgraph ConversionEngine ["4. UNIFIED CONVERSION ENGINE"]
+        MODAL["Lead Conversion Modal<br/>(Auto-Linked Records Summary)"]
+        COMP["Company Profile<br/>(Corporate Account)"]
+        CONT["Contact Profile<br/>(Key Stakeholder)"]
+        OPP["Opportunity Deal<br/>(Deal Value & Timeline)"]
     end
 
-    subgraph DealClosing ["5️⃣ Opportunity Progression"]
-        D_PROP["Proposal Sent"]
-        D_NEG["Negotiation"]
-        D_WON["🏆 Closed Won"]
+    subgraph ClosingEngine ["5. DEAL NEGOTIATION & CLOSING"]
+        ST_PROP["Stage 4: Proposal<br/>(Quote Delivered)"]
+        ST_NEG["Stage 5: Negotiation<br/>(Contract Terms Finalized)"]
+        ST_WON["Stage 6: Closed Won<br/>(Deal Agreement Secured)"]
+        DRAWER["Won Opportunity Drawer<br/>(Convert to Subscription Action)"]
     end
 
-    Ingestion --> LEAD
-    LEAD --> ST_NEW
+    Ingestion --> LEAD_REC
+    LEAD_REC --- LEAD_DRAWER
+    LEAD_REC --> PIPE_SEL
+    PIPE_SEL --> ST_NEW
     ST_NEW --> ST_CONT
     ST_CONT --> ST_CONF
     ST_CONF ==>|Trigger Conversion| MODAL
     MODAL --> COMP
     MODAL --> CONT
     MODAL --> OPP
-    OPP --> D_PROP
-    D_PROP --> D_NEG
-    D_NEG --> D_WON
+    OPP --> ST_PROP
+    ST_PROP --> ST_NEG
+    ST_NEG --> ST_WON
+    ST_WON --> DRAWER
 
-    classDef leadStyle fill:#f8fafc,stroke:#64748b,stroke-width:2px,color:#0f172a;
-    classDef modalStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
-    classDef triadStyle fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d;
-    classDef wonStyle fill:#ecfdf5,stroke:#059669,stroke-width:3px,color:#065f46;
+    classDef inStyle fill:#f8fafc,stroke:#94a3b8,stroke-width:2px,color:#0f172a;
+    classDef leadStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
+    classDef pipeStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#0c4a6e;
+    classDef convStyle fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75;
+    classDef wonStyle fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#065f46;
 
-    class L_WEB,L_MAN,L_REF,LEAD,ST_NEW,ST_CONT,ST_CONF leadStyle;
-    class MODAL,D_PROP,D_NEG modalStyle;
-    class COMP,CONT,OPP triadStyle;
-    class D_WON wonStyle;
+    class IN_WEB,IN_CAMP,IN_DIR inStyle;
+    class LEAD_REC,LEAD_DRAWER leadStyle;
+    class PIPE_SEL,ST_NEW,ST_CONT,ST_CONF pipeStyle;
+    class MODAL,COMP,CONT,OPP convStyle;
+    class ST_PROP,ST_NEG,ST_WON,DRAWER wonStyle;
 ```
 
 ---
@@ -216,60 +180,66 @@ This diagram depicts the decoupled commercial billing engine, showcasing pricing
 
 ```mermaid
 flowchart TD
-    subgraph CommercialCustomer ["1️⃣ Commercial Identity"]
-        BC["Billing Customer<br/>• Tax ID & Currency (USD/PKR)<br/>• Default Payment Terms (Net 30)<br/>• Credit Balance Wallet"]
+    subgraph CustomerLayer ["1. COMMERCIAL CUSTOMER IDENTITY"]
+        BCUST["Billing Customer Account<br/>• Multi-Tenant Organization Scope<br/>• Currency (USD / PKR) & Tax Identifiers<br/>• Default Terms (Net 0 / Net 30) & Credit Wallet"]
     end
 
-    subgraph SubscriptionEngine ["2️⃣ Subscription Lifecycle & Snapshots"]
-        SUB["Subscription (SUB-XXXXX)<br/>• Immutable Snapshot Unit Price<br/>• Monthly / Yearly Billing Cadence<br/>• State Machine: LIVE / PAST_DUE / PAUSED / CANCELLED"]
-        ITEMS["Subscription Items & Add-ons<br/>Snapshot Price frozen at agreement time"]
+    subgraph SubscriptionLayer ["2. SUBSCRIPTION LIFECYCLE & PRICING SNAPSHOTS"]
+        SUB["Subscription Contract (SUB-XXXXX)<br/>• Monthly / Yearly Billing Term Cadence<br/>• Auto-Renewal & Term Advance Scheduling<br/>• State Machine: LIVE / PAST_DUE / PAUSED / CANCELLED"]
+        ITEMS["Subscription Items & Add-ons<br/>• Immutable Unit Price Snapshot (Frozen at Agreement)<br/>• Catalog Price Changes Do Not Alter Active Subscriptions"]
     end
 
-    subgraph InvoicingEngine ["3️⃣ Idempotent Invoicing & Documents"]
-        INV["Posted Invoice (INV-YYYY-XXXXX)<br/>• Deterministic Idempotency Key<br/>• ReportLab Automated PDF Generation<br/>• Immutable Line Items"]
+    subgraph InvoicingLayer ["3. IDEMPOTENT INVOICING & DOCUMENT ENGINE"]
+        INV["Posted Invoice (INV-YYYY-XXXXX)<br/>• Deterministic Idempotency Key (No Duplicate Bills)<br/>• Itemized Subtotals, Taxes & Discounts<br/>• Automated Branded PDF Generation via ReportLab"]
     end
 
-    subgraph CollectionsEngine ["4️⃣ Payments & Double-Entry Allocation"]
-        PAY["Decoupled Payment (PAY-XXXXX)<br/>• Stripe Card Token / Bank Transfer<br/>• Recorded independently of invoices"]
-        ALLOC["Payment Allocation Ledger<br/>Allocates funds to settle Invoice to PAID"]
+    subgraph SettlementLayer ["4. PAYMENTS & DOUBLE-ENTRY ALLOCATIONS"]
+        PAY["Decoupled Payment (PAY-XXXXX)<br/>• Stripe Tokenized Gateway & Bank Transfers<br/>• Independent Cash Tracking"]
+        ALLOC["Payment Allocation Ledger<br/>• Binds Payments to Invoices<br/>• Automatic Settlement to PAID Status"]
     end
 
-    subgraph SafeguardsEngine ["5️⃣ Safeguards & Recovery"]
-        DUN["Dunning Engine<br/>Automated Retries on Day 3 / 7 / 14"]
-        ADJ["Credit / Debit Notes<br/>Formal balance corrections"]
-        AUDIT["Immutable Audit Trail<br/>SubscriptionAuditLog & ChangeLog"]
+    subgraph RecoveryLayer ["5. DUNNING RECOVERY & FINANCIAL ADJUSTMENTS"]
+        DUN["Automated Dunning Engine<br/>• Smart Retries: Day 3, Day 7, Day 14<br/>• Past-Due & Unpaid Lifecycle Alerts"]
+        ADJ["Formal Financial Adjustments<br/>• Credit Notes & Debit Notes<br/>• Negative Invoice Lines Strictly Prohibited"]
+        AUDIT["Immutable Audit Trail<br/>• SubscriptionAuditLog & ChangeLog<br/>• Double-Entry Balance Verification"]
     end
 
-    subgraph IntelligenceEngine ["6️⃣ Executive Analytics"]
-        ANALYTICS["Revenue Analytics<br/>• Real-Time MRR & ARR<br/>• Net MRR Movement Waterfall<br/>• ARPU & Churn Metrics"]
+    subgraph AnalyticsLayer ["6. REVENUE INTELLIGENCE & RBAC"]
+        MRR["Revenue Analytics Dashboard<br/>• Real-Time MRR, ARR & ARPU<br/>• Net MRR Movement Waterfall (New / Expansion / Churn)"]
+        RBAC["5 Granular RBAC Permissions<br/>(Analytics, Customers, Subscriptions, Invoices, Payments)"]
     end
 
-    BC ==>|Provisions Agreement| SUB
-    SUB --- ITEMS
-    SUB ==>|Billing Run| INV
-    INV ==>|Settled via| ALLOC
-    PAY ==>|Allocated via| ALLOC
-    INV -.->|Failed Payment| DUN
+    CustomerLayer ==>|Provisions Contract| SubscriptionLayer
+    SubscriptionLayer --- ITEMS
+    SubscriptionLayer ==>|Periodic Billing Cycle| InvoicingLayer
+    InvoicingLayer ==>|Requires Settlement| SettlementLayer
+    PAY --> ALLOC
+    ALLOC -->|Settles Invoice| INV
+    InvoicingLayer -.->|Failed Payment| DUN
     DUN -.->|Recovers Funds| PAY
-    INV -.->|Overcharge / Refund| ADJ
-    SUB -.->|State Transitions| AUDIT
-    INV -.->|Invoice Events| AUDIT
-    PAY -.->|Payment Events| AUDIT
-    AUDIT ==>|Aggregates into| ANALYTICS
+    InvoicingLayer -.->|Correction / Refund| ADJ
+    SubscriptionLayer -.->|Auditable Event| AUDIT
+    InvoicingLayer -.->|Auditable Event| AUDIT
+    SettlementLayer -.->|Auditable Event| AUDIT
+    AUDIT ==>|Aggregates into| MRR
+    RBAC -.->|Governs Access to| CustomerLayer
+    RBAC -.->|Governs Access to| SubscriptionLayer
+    RBAC -.->|Governs Access to| InvoicingLayer
+    RBAC -.->|Governs Access to| SettlementLayer
 
     classDef custStyle fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75;
     classDef subStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#075985;
     classDef invStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a;
     classDef payStyle fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef safeStyle fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#78350f;
-    classDef intStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
+    classDef recStyle fill:#fffbeb,stroke:#f59e0b,stroke-width:2px,color:#78350f;
+    classDef revStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
 
-    class BC custStyle;
-    class SUB,ITEMS subStyle;
-    class INV invStyle;
-    class PAY,ALLOC payStyle;
-    class DUN,ADJ,AUDIT safeStyle;
-    class ANALYTICS intStyle;
+    class CustomerLayer,BCUST custStyle;
+    class SubscriptionLayer,SUB,ITEMS subStyle;
+    class InvoicingLayer,INV invStyle;
+    class SettlementLayer,PAY,ALLOC payStyle;
+    class RecoveryLayer,DUN,ADJ,AUDIT recStyle;
+    class AnalyticsLayer,MRR,RBAC revStyle;
 ```
 
 ---
