@@ -87,7 +87,7 @@ flowchart TD
     AUTH --> SUPP
     
     JTS_USER -.->|Service Inquiries| LEADS
-    WON ==>|Convert to Subscription| BCUST
+    WON -->|Convert to Subscription| BCUST
     TRIAD -.->|Ongoing Relationship| SUPP
     PIPE -.->|Sales Data| UREP
     BINV -.->|Financial Ledger| BREP
@@ -151,7 +151,7 @@ flowchart TD
     PIPE_SEL --> ST_NEW
     ST_NEW --> ST_CONT
     ST_CONT --> ST_CONF
-    ST_CONF ==>|Trigger Conversion| MODAL
+    ST_CONF -->|Trigger Conversion| MODAL
     MODAL --> COMP
     MODAL --> CONT
     MODAL --> OPP
@@ -209,23 +209,23 @@ flowchart TD
         RBAC["5 Granular RBAC Permissions<br/>(Analytics, Customers, Subscriptions, Invoices, Payments)"]
     end
 
-    CustomerLayer ==>|Provisions Contract| SubscriptionLayer
-    SubscriptionLayer --- ITEMS
-    SubscriptionLayer ==>|Periodic Billing Cycle| InvoicingLayer
-    InvoicingLayer ==>|Requires Settlement| SettlementLayer
+    BCUST -->|Provisions Contract| SUB
+    SUB --- ITEMS
+    SUB -->|Periodic Billing Cycle| INV
+    INV -->|Requires Settlement| ALLOC
     PAY --> ALLOC
     ALLOC -->|Settles Invoice| INV
-    InvoicingLayer -.->|Failed Payment| DUN
+    INV -.->|Failed Payment| DUN
     DUN -.->|Recovers Funds| PAY
-    InvoicingLayer -.->|Correction / Refund| ADJ
-    SubscriptionLayer -.->|Auditable Event| AUDIT
-    InvoicingLayer -.->|Auditable Event| AUDIT
-    SettlementLayer -.->|Auditable Event| AUDIT
-    AUDIT ==>|Aggregates into| MRR
-    RBAC -.->|Governs Access to| CustomerLayer
-    RBAC -.->|Governs Access to| SubscriptionLayer
-    RBAC -.->|Governs Access to| InvoicingLayer
-    RBAC -.->|Governs Access to| SettlementLayer
+    INV -.->|Correction / Refund| ADJ
+    SUB -.->|Auditable Event| AUDIT
+    INV -.->|Auditable Event| AUDIT
+    ALLOC -.->|Auditable Event| AUDIT
+    AUDIT -->|Aggregates into| MRR
+    RBAC -.->|Governs Access to| BCUST
+    RBAC -.->|Governs Access to| SUB
+    RBAC -.->|Governs Access to| INV
+    RBAC -.->|Governs Access to| PAY
 
     classDef custStyle fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75;
     classDef subStyle fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,color:#075985;
