@@ -80,17 +80,17 @@ flowchart TD
         BREP["Revenue Analytics Dashboard<br/>(Live MRR, ARR & Waterfall Growth)"]
     end
 
-    %% Inter-System Bridges
-    TENANT --> S2
-    RBAC --> S3
-    RBAC --> S4
-    AUTH --> S5
+    %% Inter-System Bridges (Node-to-Node)
+    TENANT --> JTS_PUB
+    RBAC --> PIPE
+    RBAC --> BSUB
+    AUTH --> SUPP
     
     JTS_USER -.->|Service Inquiries| LEADS
     WON ==>|Convert to Subscription| BCUST
     TRIAD -.->|Ongoing Relationship| SUPP
-    S3 -.->|Sales Data| UREP
-    S4 -.->|Financial Ledger| BREP
+    PIPE -.->|Sales Data| UREP
+    BINV -.->|Financial Ledger| BREP
 
     %% Styling
     classDef darkBox fill:#0f172a,stroke:#6366f1,stroke-width:2px,color:#ffffff;
