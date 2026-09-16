@@ -27,6 +27,7 @@ htmlcov/
 .env
 .env.*
 *.log
+scratch/
 
 # IDEs & OS
 .vscode/

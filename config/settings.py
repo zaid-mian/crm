@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'catalog',
     'accounts',
     'support',
+    'billing',
 ]
 
 MIDDLEWARE = [
@@ -168,5 +169,19 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
+
+# Stripe Payment Gateway Configuration
+import os
+try:
+    from decouple import config
+    STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default=os.environ.get('STRIPE_SECRET_KEY', 'sk_test_mock_secret_key_for_dev'))
+    STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default=os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_mock_pub_key_for_dev'))
+    STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default=os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_mock_webhook_secret_for_dev'))
+except ImportError:
+    STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_mock_secret_key_for_dev')
+    STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_mock_pub_key_for_dev')
+    STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_mock_webhook_secret_for_dev')
+
+
 
 

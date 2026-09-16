@@ -20,12 +20,22 @@ def is_system_app(app_config):
         return True
     return False
 
+CUSTOM_RESOURCE_DEFINITIONS = {
+    'billing': [
+        ('billing_analytics', 'Revenue Analytics'),
+        ('billing_customers', 'Billing Customers'),
+        ('billing_subscriptions', 'Subscriptions'),
+        ('billing_invoices', 'Invoices'),
+        ('billing_payments', 'Payments Ledger'),
+    ]
+}
+
 class CRMRegistry:
     @staticmethod
     def discover_resources():
         """
         Scans registered Django applications, filters out system/Django frameworks,
-        and registers non-system apps as CRMResource entries. Idempotent.
+        and registers non-system apps (or explicit sub-resources) as CRMResource entries. Idempotent.
         """
         # Safety check to avoid table crashes on initial makemigrations or migrate
         try:
@@ -40,7 +50,19 @@ class CRMRegistry:
                 if is_system_app(app_config):
                     continue
                 
-                codename = app_config.label.lower()
+                app_label = app_config.label.lower()
+                
+                # Check for granular custom resources
+                if app_label in CUSTOM_RESOURCE_DEFINITIONS:
+                    for codename, display_name in CUSTOM_RESOURCE_DEFINITIONS[app_label]:
+                        resource, _ = CRMResource.objects.get_or_create(
+                            codename=codename,
+                            defaults={'name': display_name}
+                        )
+                        registered_resources.append(resource)
+                    continue
+
+                codename = app_label
                 name = getattr(app_config, 'verbose_name', codename.title())
                 
                 resource, created = CRMResource.objects.get_or_create(

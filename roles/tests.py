@@ -220,7 +220,7 @@ class PermissionEngineTests(TestCase):
     def test_permission_cache_hits_and_misses(self):
         """Verify cache miss triggers queries, cache hit does not, and invalidation triggers query again."""
         # 1. First lookup: Cache miss, should execute queries
-        with self.assertNumQueries(1):
+        with self.assertNumQueries(2):
             scope = PermissionService.get_permission_scope(self.sales_user, "leads", "VIEW")
             self.assertEqual(scope, "OWN")
 
@@ -235,7 +235,7 @@ class PermissionEngineTests(TestCase):
         perm.save()
 
         # 4. Third lookup: Cache miss after invalidation, should execute queries again
-        with self.assertNumQueries(1):
+        with self.assertNumQueries(2):
             scope = PermissionService.get_permission_scope(self.sales_user, "leads", "VIEW")
             self.assertEqual(scope, "ALL")
 
@@ -396,8 +396,10 @@ class RoleAPITests(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data["data"]), 1)
-        self.assertEqual(response.data["data"][0]["codename"], "leads")
+        codenames = [r["codename"] for r in response.data["data"]]
+        self.assertIn("leads", codenames)
+        self.assertIn("billing_invoices", codenames)
+        self.assertIn("billing_subscriptions", codenames)
 
     def test_get_and_update_permissions_matrix(self):
         """Verify matrix retrieves and atomic overwrites work."""

@@ -161,7 +161,10 @@ class MeView(APIView):
         capabilities = {}
 
         if user.is_superuser or user.is_staff:
-            resources = ['leads', 'companies', 'contacts', 'opportunities', 'payments', 'pipeline']
+            resources = [
+                'leads', 'companies', 'contacts', 'opportunities', 'payments', 'pipeline',
+                'billing_analytics', 'billing_customers', 'billing_subscriptions', 'billing_invoices', 'billing_payments'
+            ]
             for res in resources:
                 capabilities[res] = {
                     "view": True,

@@ -55,9 +55,10 @@ class PermissionService:
             perms_dict = cls.compute_user_permissions(user)
             cache.set(cache_key, perms_dict, timeout=3600)  # Cache for 1 hour
 
-        res_code = resource_codename.lower()
-        if perms_dict and res_code in perms_dict and action in perms_dict[res_code]:
-            return perms_dict[res_code][action]
+        res_code = (resource_codename or '').lower()
+        act_code = (action or '').upper()
+        if perms_dict and res_code in perms_dict and act_code in perms_dict[res_code]:
+            return perms_dict[res_code][act_code]
 
         return 'NONE'
 
@@ -80,17 +81,17 @@ class PermissionService:
 
         # 1. Fetch explicitly configured permissions from the database
         role_permissions = list(RolePermission.objects.filter(role=role).select_related('resource'))
-        
-        if role_permissions:
-            for p in role_permissions:
-                res_code = p.resource.codename.lower()
-                if res_code not in perms_dict:
-                    perms_dict[res_code] = {}
-                perms_dict[res_code][p.action] = p.scope
-            return perms_dict
+        for p in role_permissions:
+            res_code = p.resource.codename.lower()
+            if res_code not in perms_dict:
+                perms_dict[res_code] = {}
+            perms_dict[res_code][p.action] = p.scope
 
-        # 2. Otherwise (clean test database or unconfigured role), fallback to baseline system defaults
-        resources = ['leads', 'companies', 'contacts', 'opportunities', 'payments', 'pipeline']
+        # 2. For any standard resource not explicitly stored in DB for this role, fallback to baseline system defaults
+        resources = [
+            'leads', 'companies', 'contacts', 'opportunities', 'payments', 'pipeline',
+            'billing_analytics', 'billing_customers', 'billing_subscriptions', 'billing_invoices', 'billing_payments'
+        ]
         is_admin_or_manager = (
             role.name in ("Administrator", "Manager") or 
             user.is_superuser or 
@@ -99,15 +100,16 @@ class PermissionService:
         )
         
         for res_code in resources:
-            perms_dict[res_code] = {}
-            if is_admin_or_manager:
-                for act in ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'EXPORT', 'APPROVE', 'ASSIGN'):
-                    perms_dict[res_code][act] = 'ALL'
-            else:
-                for act in ('VIEW', 'CREATE', 'EDIT'):
-                    perms_dict[res_code][act] = 'OWN'
-                for act in ('DELETE', 'EXPORT', 'APPROVE', 'ASSIGN'):
-                    perms_dict[res_code][act] = 'NONE'
+            if res_code not in perms_dict:
+                perms_dict[res_code] = {}
+                if is_admin_or_manager:
+                    for act in ('VIEW', 'CREATE', 'EDIT', 'DELETE', 'EXPORT', 'APPROVE', 'ASSIGN'):
+                        perms_dict[res_code][act] = 'ALL'
+                else:
+                    for act in ('VIEW', 'CREATE', 'EDIT'):
+                        perms_dict[res_code][act] = 'OWN'
+                    for act in ('DELETE', 'EXPORT', 'APPROVE', 'ASSIGN'):
+                        perms_dict[res_code][act] = 'NONE'
             
         return perms_dict
 
@@ -116,4 +118,10 @@ class PermissionService:
         from django.core.cache import cache
         cache_key = cls.get_permission_cache_key(user_id)
         cache.delete(cache_key)
+
+    @classmethod
+    def clear_all_cached_permissions(cls):
+        from django.core.cache import cache
+        cache.clear()
+
 

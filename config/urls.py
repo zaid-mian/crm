@@ -17,4 +17,7 @@ urlpatterns = [
     path('api/', include('catalog.urls')),
     path('api/', include('accounts.urls')),
     path('api/', include('support.urls')),
+
+    # Billing & Subscription System
+    path('api/v1/billing/', include('billing.urls')),
 ]
