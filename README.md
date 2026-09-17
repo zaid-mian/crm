@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/badge/License-Proprietary-purple.svg)]()
 [![Build & Tests](https://img.shields.io/badge/Tests-122%2F122%20Passing%20(100%25)-brightgreen.svg)]()
 
+> 🎨 **Frontend Application**: This API powers the single-page application at [zaid-mian/CRM-Frontend](https://github.com/zaid-mian/CRM-Frontend).
+
 ![AdaptCRM Showcase](assets/brag.gif)
 
 AdaptCRM is an enterprise-grade, multi-tenant Customer Relationship Management (CRM) platform seamlessly integrated with an operational **Job Tracking System (JTS)** and a decoupled **Standalone Commercial Billing & Subscription Engine**.
